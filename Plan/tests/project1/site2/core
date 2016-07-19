@@ -1,0 +1,16 @@
+{
+  "mta":
+  {
+
+  },
+#include dns
+  "ljb":
+  {
+
+  },
+#include core/ntp
+  "repo":
+  {
+
+  }
+}

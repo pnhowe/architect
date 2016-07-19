@@ -1,0 +1,7 @@
+{
+  "dns":
+  {
+    "plan": "xenail",
+    "complex": "${complex}"
+  }
+}

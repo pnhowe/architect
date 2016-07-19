@@ -1,0 +1,5 @@
+{
+  "name": "site1",
+  "description": "Test in site 1",
+  "config_values": { "zzz": "yyy" }
+}

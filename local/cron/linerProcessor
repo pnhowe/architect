@@ -1,0 +1,31 @@
+#!/usr/bin/env python3 -u
+
+import os
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+
+from architect.lib.libts import getTS
+from architect.Plan.models import Member
+
+ts = getTS()
+
+timespan = 30
+
+for member in Member.objects.filter( ):
+  ( state, timestamp ) = ts.getCurState( member.uid, timespan )
+  if state is None:
+    continue
+  # NOTE: state[ 'cur' ] is in reverse chron order
+  c = 1 - ( member.a_value + member.b_value )
+  predicted = ( member.b_value * state[ 'cur' ][0] ) + ( member.a_value * state[ 'cur' ][1] ) + ( c * state[ 'cur' ][2] )
+  calc = int( predicted * member.p_value )
+  db_width = member.deadband_width / 2
+  deadband_high = calc + db_width
+  db_low = calc - db_width
+  if db_low < 0:
+    db_low = 0
+
+  ts.putControl( member.uid, timestamp, predicted, calc + db_width, db_low )
+  if member.target_instances != calc:
+    member.target_instances = calc
+    member.save()

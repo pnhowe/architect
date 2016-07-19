@@ -1,0 +1,5 @@
+{
+  "name": "test",
+  "description": "Test Root.",
+  "config_values": { "sdf": "sdf" }
+}

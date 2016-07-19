@@ -1,0 +1,4 @@
+{
+#include dns
+#include core/ntp
+}

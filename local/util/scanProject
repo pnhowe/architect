@@ -1,0 +1,47 @@
+#!/usr/bin/env PYTHONUNBUFFERED="yes" python3
+
+import os
+import django
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+django.setup()
+
+import sys
+from pprint import pprint
+
+from architect.Plan.lib import ValidationError, load, compare_to_running, apply_diff
+
+try:
+  project_dir = sys.argv[1]
+  include_dirs = sys.argv[2:]
+except IndexError:
+  print( 'Usage: %s <project dir> [ <include dir 1> <include dir 2> ...]' % sys.argv[0] )
+  sys.exit( 1 )
+
+# if project_dir is not a dir
+# print '"%s" is not a director'
+# sys.exit( 1 )
+
+try:
+  project = load( project_dir, include_dirs )
+except ValidationError as e:
+  print( 'Error Loading "{0}"'.format( e ) )
+  sys.exit( 1 )
+
+pprint( project )
+
+diff = compare_to_running( project )
+if diff == []:
+  print( 'No Changes' )
+  sys.exit( 0 )
+
+pprint( diff )
+
+print( 'Apply?' )
+if sys.stdin.readline().strip() != 'y':
+  print( 'Aborted' )
+  sys.exit( 0 )
+
+apply_diff( diff )
+
+sys.exit( 0 )
