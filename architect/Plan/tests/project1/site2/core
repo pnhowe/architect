@@ -1,0 +1,19 @@
+{
+  "mta":
+  {
+    "blueprint": "xenial",
+    "complex": "${complex}"
+  },
+#include dns
+  "ljb":
+  {
+    "blueprint": "trusty",
+    "complex": "${complex}"
+  },
+#include core/ntp
+  "repo":
+  {
+    "blueprint": "trusty",
+    "complex": "${complex}"
+  }
+}

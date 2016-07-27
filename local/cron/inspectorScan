@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os
+import django
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+django.setup()
+
+import time
+
+from django.utils import timezone
+
+from architect.Plan.models import Member
+from architect.Builder.models import Instance
+from architect.Inspector.models import Inspection
+from architect.Inspector.lib import updateInspection
+
+print( 'Starting Inspector Scan...' )
+
+for member in Member.objects.filter( inspection=None ):
+  print( 'Creating Inspection Record for "{0}"'.format( member ) )
+  inspection = Inspection()
+  inspection.member = member
+  inspection.next_check = timezone.now()
+  inspection.clean()
+  inspection.save()
+
+for inspection in Inspection.objects.filter( next_check__lte=timezone.now() ):
+  print( 'Checking State for {0}'.format( inspection ) )
+  timestamp = time.time()
+  ( new_value, normalized_value ) = updateInspection( inspection )
+  if new_value is not None:
+    print( '  new_value: {0}  normalized_value: {1}'.format( new_value, normalized_value ) )
+    inspection.logCheckpoint( timestamp, new_value, normalized_value )
+
+  active = Instance.objects.filter( member=inspection.member, requested_at__isnull=False, built_at__isnull=True ).count()
+  provisioning = Instance.objects.filter( member=inspection.member, built_at__isnull=False, unrequested_at__isnull=True ).count()
+  deprovisioining = Instance.objects.filter( member=inspection.member, unrequested_at__isnull=False, destroyed_at__isnull=True ).count()
+  print( '  active: {0}  provisioing: {1}  deprovisioining: {2}'.format( active, provisioning, deprovisioining ) )
+  inspection.logProvisionedState( timestamp, active, provisioning, deprovisioining )
+
+print( 'Inspector Scan Complete.' )

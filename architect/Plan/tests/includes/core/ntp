@@ -1,0 +1,8 @@
+{
+  "ntp":
+  {
+    "hostname_pattern": "ntp{offset:02}",
+    "blueprint": "xenail",
+    "complex": "${complex}"
+  }
+}

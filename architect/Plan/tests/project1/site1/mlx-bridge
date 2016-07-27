@@ -1,0 +1,17 @@
+{
+  "mlx-bridge-ma":
+  {
+    "blueprint": "xenial",
+    "min_instances": 4,
+    "max_instances": 50,
+    "scaler_type": "step",
+    "tsd_metric": "mlx.bridge.count:rate",
+    "can_grow": true,
+    "can_shrink": true,
+    "deadband_margin": 2,
+    "complex": "otherone",
+    "step_threshold": 100,
+    "a_value": 0.1,
+    "b_value": 0.1
+  }
+}

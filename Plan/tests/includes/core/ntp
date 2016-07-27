@@ -1,7 +1,0 @@
-{
-  "ntp":
-  {
-    "plan": "xenail",
-    "complex": "${complex}"
-  }
-}

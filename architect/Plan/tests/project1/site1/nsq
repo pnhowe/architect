@@ -1,0 +1,29 @@
+{
+  "nsq":
+  {
+    "blueprint": "xenial",
+    "min_instances": 4,
+    "max_instances": 10,
+    "scaler_type": "liner",
+    "tsd_metric": "mlx.nsq.queudepth",
+    "can_grow": true,
+    "can_shrink": true,
+    "deadband_margin": 2,
+    "complex": "otherone",
+    "p_value": 0.1,
+    "a_value": 0.1,
+    "b_value": 0.1
+  },
+  "nsqadmin":
+  {
+    "blueprint": "xenial",
+    "min_instances": 2,
+    "complex": "otherone"
+  },
+  "nsqlookup":
+  {
+    "blueprint": "xenial",
+    "min_instances": 2,
+    "complex": "otherone"
+  }
+}

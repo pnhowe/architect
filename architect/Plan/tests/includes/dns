@@ -1,0 +1,8 @@
+{
+  "dns":
+  {
+    "hostname_pattern": "dns{offset:02}",
+    "blueprint": "xenail",
+    "complex": "${complex}"
+  }
+}
