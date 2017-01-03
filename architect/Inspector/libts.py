@@ -48,11 +48,11 @@ class GraphiteTimeSeries( TimeSeries ):
     self._put( data )
 
   def getGraph( self, name, start_offset, end_offset, height, width ):
-    start = '-%smin' % start_offset
+    start = '-{0}min'.format( start_offset )
     if end_offset == 0:
       end = 'now'
     else:
-      end = '-%smin' % end_offset
+      end = '-{0}min'.format( end_offset )
     return 'http://{0}:{1}/render?from={2}&until={3}&width={4}&height={5}&target=secondYAxis({6}.{{cur,norm}})&target={6}.{{calc,tar}}&target=color({6}.{{db_low,db_high}},"ffaaaa")&target=color({6}.{{max,min}},"aaaaff")'.format( self.graphite_host, self.graphite_http_port, start, end, width, height, name )
 
   def getCurState( self, name, timespan ): # timespan in seconds
@@ -61,7 +61,7 @@ class GraphiteTimeSeries( TimeSeries ):
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:
-      raise Exception( 'Unknown status "%s"' % resp.status )
+      raise Exception( 'Unknown status "{0}"'.format( resp.status ) )
 
     result = { 'cur': None }
     timestamp = None

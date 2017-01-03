@@ -25,7 +25,7 @@ try:
   project_dir = sys.argv[1]
   include_dirs = sys.argv[2:]
 except IndexError:
-  print( 'Usage: %s <project dir> [ <include dir 1> <include dir 2> ...]' % sys.argv[0] )
+  print( 'Usage: %s <project dir> [ <include dir 1> <include dir 2> ...]'.format( sys.argv[0] ) )
   sys.exit( 1 )
 
 # if project_dir/include_dir is not a dir

@@ -75,7 +75,7 @@ member_affinity -> positive - keep togeahter, negative keep apart. -10 -> 10 (-1
 
   @property
   def uid( self ):
-    return '%s:%s' % ( self.site.name, self.name )
+    return '{0}:{1}'.format( ( self.site.name, self.name ) )
 
   @property
   def active_count( self ):

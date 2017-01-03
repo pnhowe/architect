@@ -71,7 +71,7 @@ WSGI_APPLICATION = 'architect.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/tmp/architect.sqlite3',
+        'NAME': '/opt/architect.sqlite3',
     }
 }
 

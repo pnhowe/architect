@@ -20,7 +20,7 @@ class OpenTSD( object ):
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:
-      raise Exception( 'Unknown status "%s"' % resp.status )
+      raise Exception( 'Unknown status "{0}"'.format( resp.status ) )
 
     data = json.loads( resp.read() )
     resp.close()
