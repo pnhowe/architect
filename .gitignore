@@ -2,6 +2,8 @@ __pycache__
 vagrant/.vagrant
 vagrant/.Vagrantfile.swp
 
+architect.egg-info
+
 htmlcov
 .cache
 .coverage

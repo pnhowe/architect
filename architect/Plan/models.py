@@ -7,12 +7,97 @@ from cinp.orm_django import DjangoCInP as CInP
 
 from architect.fields import MapField
 
-SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'liner', 'Liner' ) )
+SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
 
-site_name_regex = re.compile( '^[a-zA-Z0-9\-]{2,10}$')
-member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$')
+site_name_regex = re.compile( '^[a-zA-Z0-9\-]{2,10}$' )
+member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$' )
+script_name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 
 cinp = CInP( 'Plan', '0.1' )
+
+
+class Complex( models.Model ):
+  pass
+
+
+class TimeSeries( models.Model ):
+  pass
+
+
+class BluePrint( models.Model ):
+  pass
+
+
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+class Plan( models.Model ):
+  name = models.CharField( max_length=50, primary_key=True )
+  description = models.CharField( max_length=200 )
+  script = models.TextField()  # TODO: on save run lint
+  complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
+  blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
+  timeseries_list = models.ManyToManyField( TimeSeries, through='PlanTimeSeries' )
+  static_values = models.TextField()
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+
+class PlanComplex( models.Model ):
+  plan = models.ForeignKey( Plan )
+  complex = models.ForeignKey( Complex )
+  cost = models.FloatField()  # 0 -> large value
+  availability = models.FloatField()  # 0.0 -> 1.0
+  reliability = models.FloatField()  # 0.0 -> 1.0
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    if not script_name_regex.match( self.script_name ):
+      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+
+  def __str__( self ):
+    return 'PlanComplex for Plan "{0}" to "{1}"'.format( self.plan, self.complex )
+
+  class Meta:
+    unique_together = ( ( 'plan', 'complex' ), )
+
+
+class PlanBluePrint( models.Model ):
+  plan = models.ForeignKey( Plan )
+  blueprint = models.ForeignKey( BluePrint )
+  script_name = models.CharField( max_length=50 )
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    if not script_name_regex.match( self.script_name ):
+      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+
+  def __str__( self ):
+    return 'PlanBluePrint for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.blueprint, self.script_name )
+
+  class Meta:
+    unique_together = ( ( 'plan', 'blueprint' ), )
+
+
+class PlanTimeSeries( models.Model ):
+  plan = models.ForeignKey( Plan )
+  blueprint = models.ForeignKey( TimeSeries )
+  script_name = models.CharField( max_length=50 )
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    if not script_name_regex.match( self.script_name ):
+      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+
+  def __str__( self ):
+    return 'PlanBluePrint for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.blueprint, self.script_name )
+
+  class Meta:
+    unique_together = ( ( 'plan', 'blueprint' ), )
 
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
@@ -115,12 +200,12 @@ member_affinity -> positive - keep togeahter, negative keep apart. -10 -> 10 (-1
       if self.a_value is None or self.b_value is None or self.deadband_margin is None:
         raise ValidationError( 'a_value, b_value, deadband_margin are required when there is a metric' )
 
-    if self.scaler_type == 'liner':
+    if self.scaler_type == 'linear':
       if self.p_value is None:
-        raise ValidationError( 'p_value is required for scaler_type "liner"' )
+        raise ValidationError( 'p_value is required for scaler_type "linear"' )
 
       if self.p_value == 0:
-        raise ValidationError( 'p_value can not be 0 for scaler_type "liner"' )
+        raise ValidationError( 'p_value can not be 0 for scaler_type "linear"' )
 
       if ( self.a_value + self.b_value ) > 1:
         raise ValidationError( 'a_value + b_value can not exceed 1' )

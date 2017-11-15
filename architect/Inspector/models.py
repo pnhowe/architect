@@ -30,7 +30,7 @@ class Inspection( models.Model ):
   @property
   def graph_url( self ):
     ts = getTS()
-    return ts.getGraph( self.member.uid, "30", "0", 400, 800 )
+    return ts.getGraph( self.member.uid, '30', '0', 400, 800 )
 
   @property
   def building( self ):
