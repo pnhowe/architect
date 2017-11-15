@@ -7,9 +7,6 @@ OPENTSD_HOST = '127.0.0.1'
 OPENTSD_PORT = 4242
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '@(a3yjcc(d3uxt)c7n(0vdfhe!$%u2(dvk^9^cg26+4wmih6l7'
 
@@ -18,10 +15,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = (
+    'architect.User',
     'architect.Plan',
     'architect.Builder',
     'architect.Inspector',
@@ -49,7 +46,7 @@ ROOT_URLCONF = 'architect.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['/usr/lib/python3/dist-packages/architect/templates/'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -71,7 +68,7 @@ WSGI_APPLICATION = 'architect.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/opt/architect.sqlite3',
+        'NAME': '/opt/architect/db.sqlite3',
     }
 }
 

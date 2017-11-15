@@ -3,18 +3,24 @@ import re
 from django.db import models
 from django.core.exceptions import ValidationError
 
-from architect.fields import JSONField
+from cinp.orm_django import DjangoCInP as CInP
+
+from architect.fields import MapField
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'liner', 'Liner' ) )
 
 site_name_regex = re.compile( '^[a-zA-Z0-9\-]{2,10}$')
 member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$')
 
+cinp = CInP( 'Plan', '0.1' )
+
+
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Site( models.Model ):
-  name = models.CharField( max_length=20, primary_key=True ) # same length as contractor.site.name
+  name = models.CharField( max_length=20, primary_key=True )  # same length as contractor.site.name
   description = models.CharField( max_length=200 )
   parent = models.ForeignKey( 'self', null=True, blank=True )
-  config_values = JSONField()
+  config_values = MapField( blank=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -26,7 +32,9 @@ class Site( models.Model ):
   def __str__( self ):
     return 'Site "{0}"({1})'.format( self.description, self.name )
 
-class Member( models.Model ): # this fields should match the default member in lib.py
+
+@cinp.model( property_list=[ 'uid' ], not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+class Member( models.Model ):  # this fields should match the default member in lib.py
   """
 hostname_pattern -> python.format format, {offset} -> incramenting number for blueprint in site, {id} -> structure id, {blueprint} -> blueprint name, {site} -> site name
 config_profile, config_priority, config_values, auto_configure -> values to configure plato with
@@ -50,10 +58,10 @@ member_affinity -> positive - keep togeahter, negative keep apart. -10 -> 10 (-1
   build_priority = models.IntegerField( default=100 )
   auto_build = models.BooleanField( default=False )
   complex = models.CharField( max_length=50 )
-  config_values = JSONField()
-  #inspector data - type,p,metric,lockout_metric
-  #safety_data - heart beat interval, health check
-  #security_data - required ports
+  config_values = MapField()
+  # inspector data - type,p,metric,lockout_metric
+  # safety_data - heart beat interval, health check
+  # security_data - required ports
   scaler_type = models.CharField( max_length=5, choices=SCALER_CHOICES, default='none' )
   min_instances = models.IntegerField( null=True, blank=True )
   max_instances = models.IntegerField( null=True, blank=True )

@@ -1,10 +1,17 @@
 from django.db import models
 
+from cinp.orm_django import DjangoCInP as CInP
+
 from architect.Plan.models import Member
 from architect.fields import JSONField
 
 from architect.Inspector.libts import getTS
 
+
+cinp = CInP( 'Inspector', '0.1' )
+
+
+@cinp.model( property_list=[ 'target_range', 'graph_url', 'building', 'destroying' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Inspection( models.Model ):
   member = models.OneToOneField( Member, primary_key=True, on_delete=models.CASCADE )
   state = JSONField()
@@ -49,4 +56,4 @@ class Inspection( models.Model ):
     super().delete( *args, **kwargs )
 
   def __str__( self ):
-    return 'State for "{0}"'.format( self.member )
+    return 'Inspection for "{0}"'.format( self.member )

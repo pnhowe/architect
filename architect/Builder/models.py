@@ -1,11 +1,18 @@
 from django.db import models
 
+from cinp.orm_django import DjangoCInP as CInP
+
 from architect.Plan.models import Member
 
+
+cinp = CInP( 'Builder', '0.1' )
+
+
+@cinp.model( property_list=[ 'state', 'config_values' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Instance( models.Model ):
   member = models.ForeignKey( Member, on_delete=models.SET_NULL, null=True, blank=True )
   hostname = models.CharField( max_length=100 )
-  structure_id = models.IntegerField( unique=True ) # structure_id on contractor
+  structure_id = models.IntegerField( unique=True )  # structure_id on contractor
   offset = models.IntegerField()
   requested_at = models.DateTimeField( null=True, blank=True )
   built_at = models.DateTimeField( null=True, blank=True )
@@ -45,10 +52,14 @@ class Instance( models.Model ):
     unique_together = ( ( 'member', 'offset' ), )
 
 
+@cinp.model( property_list=[ 'state', 'config_values' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Job( models.Model ):
   JOB_ACTION_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'regenerate', 'regenerate' ) )
   instance = models.ForeignKey( Instance, on_delete=models.CASCADE )
-  job_id = models.IntegerField() # contractor build job id
+  job_id = models.IntegerField()  # contractor build job id
   action = models.CharField( max_length=20, choices=JOB_ACTION_CHOICES, default='none' )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
+
+  def __str__( self ):
+    return 'Job id "{0}" for {1}'.format( self.id, self.instance )
