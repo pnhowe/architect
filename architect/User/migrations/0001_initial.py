@@ -5,9 +5,11 @@ import hashlib
 
 from django.db import migrations, models
 
+
 def setPassword( user, password ):
   user.password = hashlib.sha256( password.encode( 'utf-8' ) ).hexdigest()
   user.save()
+
 
 def load_users( app, schema_editor ):
   User = app.get_model( 'User', 'User' )

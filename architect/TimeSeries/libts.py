@@ -5,12 +5,15 @@ import http
 
 from django.conf import settings
 
+
 def getTS():
   return GraphiteTimeSeries( settings.GRAPHITE_HOST, settings.GRAPHITE_INJEST_PORT, settings.GRAPHITE_HTTP_PORT )
 
-class TimeSeries( object ):
-  def __init__( self, *args, **kwargs ):
-    pass
+
+class TimeSeries():
+  def __init__( self ):
+    super().__init__()
+
 
 class GraphiteTimeSeries( TimeSeries ):
   def __init__( self, graphite_host, graphite_injest_port, graphite_http_port, *args, **kwargs ):
@@ -55,7 +58,7 @@ class GraphiteTimeSeries( TimeSeries ):
       end = '-{0}min'.format( end_offset )
     return 'http://{0}:{1}/render?from={2}&until={3}&width={4}&height={5}&target=secondYAxis({6}.{{cur,norm}})&target={6}.{{calc,tar}}&target=color({6}.{{db_low,db_high}},"ffaaaa")&target=color({6}.{{max,min}},"aaaaff")'.format( self.graphite_host, self.graphite_http_port, start, end, width, height, name )
 
-  def getCurState( self, name, timespan ): # timespan in seconds
+  def getCurState( self, name, timespan ):  # timespan in seconds
     url = '/render?target=keepLastValue({0}.cur)&target=keepLastValue({0}.norm)&target=keepLastValue({0}.calc)&target=keepLastValue({0}.db_high)&target=keepLastValue({0}.db_low)&from=-{1}sec&format=pickle'.format( name, ( timespan * 8 ) )
     conn = http.client.HTTPConnection( self.graphite_host, self.graphite_http_port )
     conn.request( 'GET', url )
@@ -79,10 +82,10 @@ class GraphiteTimeSeries( TimeSeries ):
       elif item[ 'name' ].endswith( '.db_low)' ):
         result[ 'db_low' ] = item[ 'values' ][ -1 ]
 
-    if timestamp is None or not result[ 'cur' ]: # could be None or []
+    if timestamp is None or not result[ 'cur' ]:  # could be None or []
       return ( None, timestamp )
 
     while len( result[ 'cur' ] ) < 3:
-      result[ 'cur' ] = [ result[ 'cur' ][0] ] + result[ 'cur' ] # prepend, this in reverse chron order
+      result[ 'cur' ] = [ result[ 'cur' ][0] ] + result[ 'cur' ]  # prepend, this in reverse chron order
 
     return ( result, timestamp )

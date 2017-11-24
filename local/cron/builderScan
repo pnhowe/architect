@@ -44,4 +44,4 @@ for inspection in Inspection.objects.all():
       instance.save()
 
   elif curent_count > deadband_high:
-    pass # do the delete thing
+    pass  # do the delete thing

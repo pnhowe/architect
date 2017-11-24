@@ -4,8 +4,10 @@ from http import client
 
 from django.conf import settings
 
+
 def getTSD():
   return OpenTSD( settings.OPENTSD_HOST, settings.OPENTSD_PORT )
+
 
 class OpenTSD( object ):
   def __init__( self, opentsd_host, opentsd_port, *args, **kwargs ):
@@ -25,4 +27,4 @@ class OpenTSD( object ):
     data = json.loads( resp.read() )
     resp.close()
 
-    return data[ 0 ][ 'dps' ][ -1 ] # really should sort by the timestamp
+    return data[ 0 ][ 'dps' ][ -1 ]  # really should sort by the timestamp

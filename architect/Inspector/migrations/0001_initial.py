@@ -15,8 +15,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Inspection',
             fields=[
-                ('member', models.OneToOneField(serialize=False, to='Plan.Member', primary_key=True)),
-                ('state', architect.fields.JSONField(default={})),
+                ('member', models.OneToOneField(primary_key=True, serialize=False, to='Plan.Member')),
+                ('state', architect.fields.JSONField()),
                 ('target_count', models.IntegerField(default=0)),
                 ('next_check', models.DateTimeField()),
                 ('updated', models.DateTimeField(auto_now=True)),

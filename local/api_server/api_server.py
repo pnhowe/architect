@@ -41,6 +41,7 @@ if __name__ == '__main__':
   logger.debug( 'Registering Models...' )
 
   app.registerNamespace( '/', 'architect.User' )
+  app.registerNamespace( '/', 'architect.TimeSeries' )
   app.registerNamespace( '/', 'architect.Builder' )
   app.registerNamespace( '/', 'architect.Plan' )
   app.registerNamespace( '/', 'architect.Inspector' )

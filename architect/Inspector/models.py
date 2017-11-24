@@ -5,7 +5,7 @@ from cinp.orm_django import DjangoCInP as CInP
 from architect.Plan.models import Member
 from architect.fields import JSONField
 
-from architect.Inspector.libts import getTS
+from architect.TimeSeries.libts import getTS
 
 
 cinp = CInP( 'Inspector', '0.1' )
@@ -52,7 +52,7 @@ class Inspection( models.Model ):
     ts.putProvisionedState( self.member.uid, timestamp, active, provisioning, deprovisioining )
 
   def delete( self, *args, **kwargs ):
-    getTS.cleanup( self.member.uid )
+    getTS().cleanup( self.member.uid )
     super().delete( *args, **kwargs )
 
   def __str__( self ):

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
 
+from architect.TimeSeries.models import TimeSeries
 from architect.fields import MapField
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
@@ -17,10 +18,6 @@ cinp = CInP( 'Plan', '0.1' )
 
 
 class Complex( models.Model ):
-  pass
-
-
-class TimeSeries( models.Model ):
   pass
 
 
@@ -44,9 +41,9 @@ class Plan( models.Model ):
 class PlanComplex( models.Model ):
   plan = models.ForeignKey( Plan )
   complex = models.ForeignKey( Complex )
-  cost = models.FloatField()  # 0 -> large value
-  availability = models.FloatField()  # 0.0 -> 1.0
-  reliability = models.FloatField()  # 0.0 -> 1.0
+  cost = models.ForeignKey( TimeSeries, related_name='+' )  # 0 -> large value
+  availability = models.ForeignKey( TimeSeries, related_name='+' )  # 0.0 -> 1.0
+  reliability = models.ForeignKey( TimeSeries, related_name='+' )  # 0.0 -> 1.0
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -83,7 +80,7 @@ class PlanBluePrint( models.Model ):
 
 class PlanTimeSeries( models.Model ):
   plan = models.ForeignKey( Plan )
-  blueprint = models.ForeignKey( TimeSeries )
+  blueprint = models.ForeignKey( TimeSeries, related_name='+'  )
   script_name = models.CharField( max_length=50 )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
