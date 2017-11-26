@@ -46,4 +46,4 @@ for name, details in complexes.items():
 for key, value in data.items():
   ts_list.append( ( 'data.{0}'.format( key ), ( timestamp, value ) ) )
 
-ts._put( ts_list )
+ts.put( ts_list )

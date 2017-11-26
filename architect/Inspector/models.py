@@ -55,5 +55,10 @@ class Inspection( models.Model ):
     getTS().cleanup( self.member.uid )
     super().delete( *args, **kwargs )
 
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
+
   def __str__( self ):
     return 'Inspection for "{0}"'.format( self.member )

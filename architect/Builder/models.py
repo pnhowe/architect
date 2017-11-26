@@ -45,6 +45,11 @@ class Instance( models.Model ):
 
     return result
 
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
+
   def __str__( self ):
     return 'Instance of "{0}" in "{1}" instance #{3}'.format( self.member.name, self.member.site.pk, self.instance )
 
@@ -60,6 +65,11 @@ class Job( models.Model ):
   action = models.CharField( max_length=20, choices=JOB_ACTION_CHOICES, default='none' )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
   def __str__( self ):
     return 'Job id "{0}" for {1}'.format( self.id, self.instance )

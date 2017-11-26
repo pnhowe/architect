@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
 
-from architect.TimeSeries.models import TimeSeries
+from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
+from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
@@ -17,33 +18,32 @@ script_name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 cinp = CInP( 'Plan', '0.1' )
 
 
-class Complex( models.Model ):
-  pass
-
-
-class BluePrint( models.Model ):
-  pass
-
-
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Plan( models.Model ):
   name = models.CharField( max_length=50, primary_key=True )
   description = models.CharField( max_length=200 )
+  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
   script = models.TextField()  # TODO: on save run lint
   complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
   blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
-  timeseries_list = models.ManyToManyField( TimeSeries, through='PlanTimeSeries' )
+  timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
   static_values = models.TextField()
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
+
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class PlanComplex( models.Model ):
-  plan = models.ForeignKey( Plan )
-  complex = models.ForeignKey( Complex )
-  cost = models.ForeignKey( TimeSeries, related_name='+' )  # 0 -> large value
-  availability = models.ForeignKey( TimeSeries, related_name='+' )  # 0.0 -> 1.0
-  reliability = models.ForeignKey( TimeSeries, related_name='+' )  # 0.0 -> 1.0
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
+  complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
+  cost = models.ForeignKey( CostTS, related_name='+', on_delete=models.PROTECT )  # 0 -> large value
+  availability = models.ForeignKey( AvailabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
+  reliability = models.ForeignKey( ReliabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -51,6 +51,11 @@ class PlanComplex( models.Model ):
     super().clean( *args, **kwargs )
     if not script_name_regex.match( self.script_name ):
       raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
   def __str__( self ):
     return 'PlanComplex for Plan "{0}" to "{1}"'.format( self.plan, self.complex )
@@ -59,9 +64,10 @@ class PlanComplex( models.Model ):
     unique_together = ( ( 'plan', 'complex' ), )
 
 
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class PlanBluePrint( models.Model ):
-  plan = models.ForeignKey( Plan )
-  blueprint = models.ForeignKey( BluePrint )
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE  )
+  blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT  )
   script_name = models.CharField( max_length=50 )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -71,24 +77,10 @@ class PlanBluePrint( models.Model ):
     if not script_name_regex.match( self.script_name ):
       raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
 
-  def __str__( self ):
-    return 'PlanBluePrint for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.blueprint, self.script_name )
-
-  class Meta:
-    unique_together = ( ( 'plan', 'blueprint' ), )
-
-
-class PlanTimeSeries( models.Model ):
-  plan = models.ForeignKey( Plan )
-  blueprint = models.ForeignKey( TimeSeries, related_name='+'  )
-  script_name = models.CharField( max_length=50 )
-  updated = models.DateTimeField( auto_now=True )
-  created = models.DateTimeField( auto_now_add=True )
-
-  def clean( self, *args, **kwargs ):
-    super().clean( *args, **kwargs )
-    if not script_name_regex.match( self.script_name ):
-      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
   def __str__( self ):
     return 'PlanBluePrint for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.blueprint, self.script_name )
@@ -98,10 +90,35 @@ class PlanTimeSeries( models.Model ):
 
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+class PlanTimeSeries( models.Model ):
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE  )
+  timeseries = models.ForeignKey( RawTimeSeries, related_name='+', on_delete=models.PROTECT   )
+  script_name = models.CharField( max_length=50 )
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    if not script_name_regex.match( self.script_name ):
+      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
+
+  def __str__( self ):
+    return 'PlanTimeSeries for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.timeseries, self.script_name )
+
+  class Meta:
+    unique_together = ( ( 'plan', 'timeseries' ), )
+
+
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Site( models.Model ):
   name = models.CharField( max_length=20, primary_key=True )  # same length as contractor.site.name
   description = models.CharField( max_length=200 )
-  parent = models.ForeignKey( 'self', null=True, blank=True )
+  parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.PROTECT  )
   config_values = MapField( blank=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -110,6 +127,11 @@ class Site( models.Model ):
     super().clean( *args, **kwargs )
     if not site_name_regex.match( self.name ):
       raise ValidationError( 'Site name "{0}" is invalid'.format( self.name ) )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
   def __str__( self ):
     return 'Site "{0}"({1})'.format( self.description, self.name )
@@ -133,7 +155,7 @@ can_grow -> allowed to grow
 can_shrink -> allowed to shrink
 member_affinity -> positive - keep togeahter, negative keep apart. -10 -> 10 (-10 never put members on same host, 10 allways put members on same host)
   """
-  site = models.ForeignKey( Site, editable=False )
+  site = models.ForeignKey( Site, editable=False, on_delete=models.PROTECT )
   name = models.CharField( max_length=50 )
   hostname_pattern = models.CharField( editable=False, max_length=100, default='{blueprint}-{id:06}' )
   blueprint = models.CharField( max_length=50 )
@@ -213,6 +235,11 @@ member_affinity -> positive - keep togeahter, negative keep apart. -10 -> 10 (-1
 
       if self.step_threshold == 0:
         raise ValidationError( 'step_threshold can not be 0 for scaler_type "step"' )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
 
   def __str__( self ):
     return 'Member "{0}" in "{1}"'.format( self.name, self.site.pk )

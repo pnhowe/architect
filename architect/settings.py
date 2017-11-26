@@ -6,6 +6,11 @@ GRAPHITE_HTTP_PORT = 8081
 OPENTSD_HOST = '127.0.0.1'
 OPENTSD_PORT = 4242
 
+CONTRACTOR_HOST = 'http://127.0.0.1'
+CONTRACTOR_ROOT_PATH = '/api/v1/'
+CONTRACTOR_PORT = 8888
+CONTRACTOR_PROXY = None
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '@(a3yjcc(d3uxt)c7n(0vdfhe!$%u2(dvk^9^cg26+4wmih6l7'
@@ -19,6 +24,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
     'architect.User',
+    'architect.Contractor',
     'architect.TimeSeries',
     'architect.Plan',
     'architect.Builder',

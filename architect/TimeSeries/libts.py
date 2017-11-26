@@ -22,12 +22,45 @@ class GraphiteTimeSeries( TimeSeries ):
     self.graphite_injest_port = graphite_injest_port
     self.graphite_http_port = graphite_http_port
 
-  def _put( self, data ):
+  def put( self, data ):
     payload = pickle.dumps( data, protocol=2 )
     soc = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
     soc.connect( ( self.graphite_host, self.graphite_injest_port ) )
     soc.send( struct.pack( '!L', len( payload ) ) + payload )
     soc.close()
+
+  def _baseHTTPUrl( self, metric_list, start_offset, end_offset, with_host=True ):
+    start = '-{0}s'.format( start_offset )
+    if end_offset is None:
+      end = 'now'
+    else:
+      end = '-{0}s'.format( end_offset )
+
+    targets = '&target='.join( metric_list )
+
+    if with_host:
+      return 'http://{0}:{1}/render?from={2}&until={3}&target={4}'.format( self.graphite_host, self.graphite_http_port, start, end, targets )
+    else:
+      return '/render?from={0}&until={1}&target={2}'.format( start, end, targets )
+
+  def get( self, metric_list, start_offset, end_offset ):
+    url = self._baseHTTPUrl( metric_list, start_offset, end_offset, False ) + '&format=pickle'
+    conn = http.client.HTTPConnection( self.graphite_host, self.graphite_http_port )
+    conn.request( 'GET', url )
+    resp = conn.getresponse()
+    if resp.status != 200:
+      raise Exception( 'Unknown status "{0}"'.format( resp.status ) )
+
+    return pickle.loads( resp.read() )
+
+  def get_last( self, metric_list, max_age ):
+    data = self.get( metric_list, max_age, None )
+    return data
+
+  def graph( self, metric_list, start_offset, end_offset, height, width ):
+    return self._baseHTTPUrl( metric_list, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
+
+  # old stuff
 
   def cleanUp( self, name ):
     pass

@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Instance',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
+                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
                 ('hostname', models.CharField(max_length=100)),
                 ('structure_id', models.IntegerField(unique=True)),
                 ('offset', models.IntegerField()),
@@ -25,13 +25,13 @@ class Migration(migrations.Migration):
                 ('destroyed_at', models.DateTimeField(blank=True, null=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('member', models.ForeignKey(on_delete=django.db.models.deletion.SET_NULL, null=True, blank=True, to='Plan.Member')),
+                ('member', models.ForeignKey(blank=True, null=True, to='Plan.Member', on_delete=django.db.models.deletion.SET_NULL)),
             ],
         ),
         migrations.CreateModel(
             name='Job',
             fields=[
-                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
+                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
                 ('job_id', models.IntegerField()),
                 ('action', models.CharField(choices=[('build', 'build'), ('destroy', 'destroy'), ('regenerate', 'regenerate')], default='none', max_length=20)),
                 ('updated', models.DateTimeField(auto_now=True)),
