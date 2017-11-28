@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+import os
+import django
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+django.setup()
+
+from architect.Contractor.models import Complex, BluePrint
+from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
+from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS
+
+print( 'Giving Complexes their tsnames...')
+for complex in Complex.objects.all():
+  if complex.contractor_id.startswith( 'cplx' ):
+    complex.tsname = complex.contractor_id
+    complex.full_clean()
+    complex.save()
+
+print( 'Giving Blueprints their names...')
+for blueprint in BluePrint.objects.all():
+  blueprint.name = blueprint.contractor_id
+  blueprint.full_clean()
+  blueprint.save()
+
+print( 'Creating the Plan...' )
+plan = Plan( name='test', description='test', enabled=True )
+plan.script = """
+#seta: not ( *INDEX* % 10 )
+"""
+plan.full_clean()
+plan.save()
+
+print( 'Setting up complex buckets...' )
+for complex in Complex.objects.filter( tsname__isnull=False ):
+  costts = CostTS( complex=complex )
+  costts.save()
+  availts = AvailabilityTS( complex=complex )
+  availts.save()
+  reliabts = ReliabilityTS( complex=complex )
+  reliabts.save()
+  pc = PlanComplex( plan=plan, complex=complex )
+  pc.cost = costts
+  pc.availability = availts
+  pc.reliability = reliabts
+  pc.full_clean()
+  pc.save()
+
+print( 'setting up blueprint link...' )
+blueprint = BluePrint.objects.get( name='generic-xenial' )
+pb = PlanBluePrint( plan=plan, blueprint=blueprint )
+pb.script_name = 'seta'
+pb.full_clean()
+pb.save()

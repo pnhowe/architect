@@ -7,8 +7,7 @@ from cinp.orm_django import DjangoCInP as CInP
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
 
-complex_tsname_regex = re.compile( '^[a-zA-Z][a-zA-Z0-9]+$' )
-blueprint_name_regex = re.compile( '^[a-zA-Z][a-zA-Z0-9]+$' )
+name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 
 cinp = CInP( 'Contractor', '0.1' )
 
@@ -29,8 +28,8 @@ class Complex( models.Model ):
       self.contractor_id = None
 
     errors = {}
-    if self.tsname is not None and not complex_tsname_regex.match( self.tsname ):
-      errors[ 'tsname' ] = 'tsname "{0}" is invalid'.format( self.tsname )
+    if self.tsname is not None and not name_regex.match( self.tsname ):
+      errors[ 'tsname' ] = '"{0}" is invalid'.format( self.tsname )
 
     if errors:
       raise ValidationError( errors )
@@ -60,8 +59,8 @@ class BluePrint( models.Model ):
       self.contractor_id = None
 
     errors = {}
-    if self.name is not None and not blueprint_name_regex.match( self.name ):
-      errors[ 'name' ] = 'name "{0}" is invalid'.format( self.name )
+    if self.name is not None and not name_regex.match( self.name ):
+      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
 
     if errors:
       raise ValidationError( errors )

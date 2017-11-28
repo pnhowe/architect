@@ -27,6 +27,13 @@ def test_parse():
 
   parse( 'a: ( asd + asd )' )
 
+  parse( 'a: not ( *INDEX* % 10 )' )
+
+  parse( 'a: 5' )
+  parse( '\na: 5' )
+  parse( 'a: 5\n' )
+  parse( '\n\na: 5\n\n' )
+
   assert lint( 'a: asdf()' ) == 'Incomplete Parsing at column: 1'
   with pytest.raises( ParserError ):
     parse( 'a: asdf()' )

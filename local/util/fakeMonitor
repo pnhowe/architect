@@ -25,6 +25,12 @@ complexes = {
                          'availability': 0.50,
                          'reliability': 0.80
                       },
+
+              'cplx8': {
+                         'cost': 5,
+                         'availability': 0.90,
+                         'reliability': 0.92
+                      },
             }
 
 
@@ -47,3 +53,5 @@ for key, value in data.items():
   ts_list.append( ( 'data.{0}'.format( key ), ( timestamp, value ) ) )
 
 ts.put( ts_list )
+
+print( timestamp )

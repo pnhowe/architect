@@ -7,8 +7,9 @@ from contractor.tscript.parsimonious import Grammar, ParseError, IncompleteParse
 # TODO: make sure a distrubution function is used
 
 tcalc_grammar = """
-script              = definition*
-definition          = ws ( blueprint / variable ) ws ":" expression nl
+script              = line*
+line                = definition? nl
+definition          = ws ( blueprint / variable ) ws ":" expression
 expression          = ws ( function / infix / boolean / not_ / external / ts_value / variable / number_float / number_int ) ws
 
 not_                = ~"[Nn]ot" expression
@@ -189,6 +190,12 @@ class Parser():
     definition_list = [ self._eval( child ) for child in node.children ]
     return '\n'.join( definition_list )
 
+  def line( self, node ):
+    if len( node.children[0].children ) == 0:
+      return ''
+
+    return self._eval( node.children[0] )
+
   def definition( self, node ):  # ws variable ws ":" expression nl
     return '  {0} = {1}'.format( self._eval( node.children[1] ), self._eval( node.children[4] ) )
 
@@ -228,7 +235,7 @@ class Parser():
     return '( {0} {1} {2} )'.format( self._eval( node.children[1] ), node.children[2].text, self._eval( node.children[3] ) )
 
   def not_( self, node ):
-    return 'not {0}'.format( self._eval( node.children[1] ) )
+    return 'not bool( {0} )'.format( self._eval( node.children[1] ) )
 
   def function( self, node ):
     param_value_list = []

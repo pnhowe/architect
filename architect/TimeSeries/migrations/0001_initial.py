@@ -7,33 +7,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('Contractor', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
             name='AvailabilityTS',
             fields=[
-                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
+                ('complex', models.OneToOneField(to='Contractor.Complex')),
             ],
             options={
                 'abstract': False,
             },
         ),
         migrations.CreateModel(
-            name='Complex',
-            fields=[
-                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
-            ],
-        ),
-        migrations.CreateModel(
             name='CostTS',
             fields=[
-                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('complex', models.ForeignKey(related_name='+', to='TimeSeries.Complex')),
+                ('complex', models.OneToOneField(to='Contractor.Complex')),
             ],
             options={
                 'abstract': False,
@@ -42,7 +38,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RawTimeSeries',
             fields=[
-                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('metric', models.CharField(max_length=200)),
@@ -54,18 +50,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ReliabilityTS',
             fields=[
-                ('id', models.AutoField(primary_key=True, verbose_name='ID', auto_created=True, serialize=False)),
+                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('complex', models.ForeignKey(related_name='+', to='TimeSeries.Complex')),
+                ('complex', models.OneToOneField(to='Contractor.Complex')),
             ],
             options={
                 'abstract': False,
             },
-        ),
-        migrations.AddField(
-            model_name='availabilityts',
-            name='complex',
-            field=models.ForeignKey(related_name='+', to='TimeSeries.Complex'),
         ),
     ]

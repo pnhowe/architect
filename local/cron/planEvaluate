@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os
+import django
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+django.setup()
+
+from architect.Plan.models import Plan
+from architect.tcalc.parser import parse
+
+for plan in Plan.objects.filter( enabled=True ):
+  print( 'doing plan "{0}"...'.format( plan ) )
+
+  complex_name = []
+  complex_cost = []
+  complex_availability = []
+  complex_reliability = []
+  for pc in plan.plancomplex_set.all().order_by( 'id' ):  # Important the complexes are evaulated in a consistant order_by
+    complex_name.append( pc.complex.tsname )
+    complex_cost.append( pc.cost.last_value )
+    complex_availability.append( pc.availability.last_value )
+    complex_reliability.append( pc.reliability.last_value )
+
+  print( complex_name )
+  print( complex_cost )
+  print( complex_availability )
+  print( complex_reliability )
+
+  calc = parse( plan.script )
+  calc.setBuckets( plan.slots_per_complex, complex_cost, complex_availability, complex_reliability )
+  calc.setTimeSeriesValues( {} )
+  slot_list_map = calc.evaluate()
+  print( slot_list_map )
+
+  for blueprint_name in slot_list_map:
+    slot_list = slot_list_map[ blueprint_name ]
+    complex_counts = [ 0 ] * len( complex_name )
+    for slot in slot_list:
+      complex_counts[ int( slot / plan.slots_per_complex ) ] += 1
+
+    print( complex_counts )

@@ -22,6 +22,7 @@ add_list = list( master_list - local_list )
 for contractor_id in add_list:
   print( 'Adding "{0}"...'.format( contractor_id ) )
   complex = Complex( contractor_id=contractor_id )
+  complex.full_clean()
   complex.save()
 
 for contractor_id in remove_list:
@@ -33,6 +34,7 @@ for contractor_id in remove_list:
   else:
     print( 'Disabeling "{0}"...'.format( contractor_id ) )
     complex.contractor_id = None
+    complex.full_clean()
     complex.save()
 
 
@@ -47,6 +49,7 @@ add_list = list( master_list - local_list )
 for contractor_id in add_list:
   print( 'Adding "{0}"...'.format( contractor_id ) )
   blueprint = BluePrint( contractor_id=contractor_id )
+  blueprint.full_clean()
   blueprint.save()
 
 for contractor_id in remove_list:
@@ -58,6 +61,7 @@ for contractor_id in remove_list:
   else:
     print( 'Disabeling "{0}"...'.format( contractor_id ) )
     blueprint.contractor_id = None
+    blueprint.full_clean()
     blueprint.save()
 
 print( 'Done' )

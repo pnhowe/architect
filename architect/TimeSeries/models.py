@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
 
+from architect.Contractor.models import Complex
 from architect.TimeSeries.libts import getTS
 
 LAST_VALUE_MAX_AGE = 3600  # in seconds
@@ -12,15 +13,6 @@ LAST_VALUE_MAX_AGE = 3600  # in seconds
 metric_regex = re.compile( '^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$' )
 
 cinp = CInP( 'TimeSeries', '0.1' )
-
-
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
-class Complex( models.Model ):
-
-  @cinp.check_auth()
-  @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
-    return True
 
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
@@ -55,7 +47,7 @@ class RawTimeSeries( TimeSeries ):
 
   @property
   def last_value( self ):
-    return None
+    return getTS().get_last( self.metric, LAST_VALUE_MAX_AGE )
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -70,7 +62,7 @@ class RawTimeSeries( TimeSeries ):
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class CostTS( TimeSeries ):
-  complex = models.ForeignKey( Complex, related_name='+', on_delete=models.CASCADE )
+  complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
   def graph_url( self, start_offset, end_offset, height, width ):
@@ -78,7 +70,7 @@ class CostTS( TimeSeries ):
 
   @property
   def last_value( self ):
-    return None
+    return getTS().get_last( 'complex.{0}.cost'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -97,7 +89,7 @@ class CostTS( TimeSeries ):
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class AvailabilityTS( TimeSeries ):
-  complex = models.ForeignKey( Complex, related_name='+', on_delete=models.CASCADE )
+  complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
   def graph_url( self, start_offset, end_offset, height, width ):
@@ -105,7 +97,7 @@ class AvailabilityTS( TimeSeries ):
 
   @property
   def last_value( self ):
-    return None
+    return getTS().get_last( 'complex.{0}.availability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
 
   @cinp.check_auth()
   @staticmethod
@@ -115,7 +107,7 @@ class AvailabilityTS( TimeSeries ):
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class ReliabilityTS( TimeSeries ):
-  complex = models.ForeignKey( Complex, related_name='+', on_delete=models.CASCADE )
+  complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
   def graph_url( self, start_offset, end_offset, height, width ):
@@ -123,7 +115,7 @@ class ReliabilityTS( TimeSeries ):
 
   @property
   def last_value( self ):
-    return None
+    return getTS().get_last( 'complex.{0}.reliability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
 
   @cinp.check_auth()
   @staticmethod

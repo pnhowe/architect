@@ -29,36 +29,61 @@ class GraphiteTimeSeries( TimeSeries ):
     soc.send( struct.pack( '!L', len( payload ) ) + payload )
     soc.close()
 
-  def _baseHTTPUrl( self, metric_list, start_offset, end_offset, with_host=True ):
+  def _baseHTTPUrl( self, metric, start_offset, end_offset, with_host=True ):
     start = '-{0}s'.format( start_offset )
     if end_offset is None:
       end = 'now'
     else:
       end = '-{0}s'.format( end_offset )
 
-    targets = '&target='.join( metric_list )
+    if isinstance( metric, list ):
+      targets = '&target='.join( metric )
+    else:
+      targets = metric
 
     if with_host:
       return 'http://{0}:{1}/render?from={2}&until={3}&target={4}'.format( self.graphite_host, self.graphite_http_port, start, end, targets )
     else:
       return '/render?from={0}&until={1}&target={2}'.format( start, end, targets )
 
-  def get( self, metric_list, start_offset, end_offset ):
-    url = self._baseHTTPUrl( metric_list, start_offset, end_offset, False ) + '&format=pickle'
+  def get( self, metric, start_offset, end_offset ):
+    url = self._baseHTTPUrl( metric, start_offset, end_offset, False ) + '&format=pickle'
     conn = http.client.HTTPConnection( self.graphite_host, self.graphite_http_port )
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:
       raise Exception( 'Unknown status "{0}"'.format( resp.status ) )
 
-    return pickle.loads( resp.read() )
+    data = pickle.loads( resp.read() )
+    if len( data ) == 0:
+      return None
 
-  def get_last( self, metric_list, max_age ):
-    data = self.get( metric_list, max_age, None )
-    return data
+    if len( data ) == 1:
+      return data[0][ 'values' ]
 
-  def graph( self, metric_list, start_offset, end_offset, height, width ):
-    return self._baseHTTPUrl( metric_list, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
+    result = {}
+    for item in data:
+      result[ item['name'] ] = item[ 'values' ]
+
+    return result
+
+  def get_last( self, metric, max_age ):
+    if not isinstance( metric, str ):
+      raise ValueError( 'get_last only supports getting one metric' )  # TODO: add support for doing a list at some point
+    data = self.get( metric, max_age, None )
+    if data is None:
+      return None
+
+    try:
+      while data[-1] is None:
+        data.pop()
+    except IndexError:
+      return None
+
+    return data[-1]
+
+  def graph( self, metric, start_offset, end_offset, height, width ):
+    return self._baseHTTPUrl( metric, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
 
   # old stuff
 

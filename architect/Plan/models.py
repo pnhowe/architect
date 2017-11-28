@@ -8,6 +8,7 @@ from cinp.orm_django import DjangoCInP as CInP
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField
+from architect.tcalc.parser import lint
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
 
@@ -27,14 +28,31 @@ class Plan( models.Model ):
   complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
   blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
   timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
-  static_values = models.TextField()
+  static_values = models.TextField( blank=True, null=True )
+  slots_per_complex = models.IntegerField( default=100 )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    errors = {}
+    if self.slots_per_complex < 1 or self.slots_per_complex > 5000:
+      errors[ 'slots_per_complex' ] = 'must be from 1 to 5000'
+
+    result = lint( self.script )
+    if result is not None:
+      errors[ 'script' ] = result
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
     return True
+
+  def __str__( self ):
+    return 'Plan "{0}"'.format( self.name )
 
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
@@ -49,8 +67,9 @@ class PlanComplex( models.Model ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
-    if not script_name_regex.match( self.script_name ):
-      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+    errors = {}
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
@@ -74,8 +93,12 @@ class PlanBluePrint( models.Model ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
+    errors = {}
     if not script_name_regex.match( self.script_name ):
-      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+      errors[ 'script_name' ] = '"{0}" is invalid'.format( self.script_name )
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
@@ -99,8 +122,12 @@ class PlanTimeSeries( models.Model ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
+    errors = {}
     if not script_name_regex.match( self.script_name ):
-      raise ValidationError( 'script_name "{0}" is invalid'.format( self.script_name ) )
+      errors[ 'script_name' ] = '"{0}" is invalid'.format( self.script_name )
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
@@ -125,8 +152,12 @@ class Site( models.Model ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
+    errors = {}
     if not site_name_regex.match( self.name ):
-      raise ValidationError( 'Site name "{0}" is invalid'.format( self.name ) )
+      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
