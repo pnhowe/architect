@@ -8,6 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('Contractor', '0001_initial'),
         ('Plan', '0001_initial'),
     ]
 
@@ -15,32 +16,30 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Instance',
             fields=[
-                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
-                ('hostname', models.CharField(max_length=100)),
-                ('structure_id', models.IntegerField(unique=True)),
-                ('offset', models.IntegerField()),
-                ('requested_at', models.DateTimeField(null=True, blank=True)),
-                ('built_at', models.DateTimeField(null=True, blank=True)),
-                ('unrequested_at', models.DateTimeField(null=True, blank=True)),
-                ('destroyed_at', models.DateTimeField(null=True, blank=True)),
+                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
+                ('nonce', models.CharField(unique=True, max_length=22)),
+                ('hostname', models.CharField(unique=True, max_length=200)),
+                ('structure_id', models.IntegerField(unique=True, blank=True, null=True)),
+                ('requested_at', models.DateTimeField(blank=True, null=True)),
+                ('built_at', models.DateTimeField(blank=True, null=True)),
+                ('unrequested_at', models.DateTimeField(blank=True, null=True)),
+                ('destroyed_at', models.DateTimeField(blank=True, null=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('member', models.ForeignKey(null=True, to='Plan.Member', on_delete=django.db.models.deletion.SET_NULL, blank=True)),
+                ('blueprint', models.ForeignKey(to='Contractor.BluePrint', on_delete=django.db.models.deletion.PROTECT)),
+                ('complex', models.ForeignKey(to='Contractor.Complex', on_delete=django.db.models.deletion.PROTECT)),
+                ('plan', models.ForeignKey(to='Plan.Plan', on_delete=django.db.models.deletion.PROTECT)),
             ],
         ),
         migrations.CreateModel(
             name='Job',
             fields=[
-                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
+                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
                 ('job_id', models.IntegerField()),
-                ('action', models.CharField(default='none', choices=[('build', 'build'), ('destroy', 'destroy'), ('regenerate', 'regenerate')], max_length=20)),
+                ('action', models.CharField(choices=[('build', 'build'), ('destroy', 'destroy'), ('regenerate', 'regenerate')], max_length=20, default='none')),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('instance', models.ForeignKey(to='Builder.Instance')),
             ],
-        ),
-        migrations.AlterUniqueTogether(
-            name='instance',
-            unique_together=set([('member', 'offset')]),
         ),
     ]

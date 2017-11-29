@@ -13,9 +13,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='BluePrint',
             fields=[
-                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
-                ('contractor_id', models.CharField(unique=True, max_length=40, null=True, blank=True)),
-                ('name', models.CharField(unique=True, max_length=50, null=True, blank=True)),
+                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
+                ('contractor_id', models.CharField(unique=True, blank=True, max_length=40, null=True)),
+                ('name', models.CharField(unique=True, blank=True, max_length=50, null=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
@@ -23,9 +23,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Complex',
             fields=[
-                ('id', models.AutoField(serialize=False, auto_created=True, primary_key=True, verbose_name='ID')),
-                ('contractor_id', models.CharField(unique=True, max_length=40, null=True, blank=True)),
-                ('tsname', models.CharField(unique=True, max_length=50, null=True, blank=True)),
+                ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
+                ('contractor_id', models.CharField(unique=True, blank=True, max_length=40, null=True)),
+                ('site_id', models.CharField(max_length=40)),
+                ('tsname', models.CharField(unique=True, blank=True, max_length=50, null=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],

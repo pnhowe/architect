@@ -17,3 +17,8 @@ class Contractor():
 
   def getBluePrints( self ):
     return self.cinp.getFilteredURIs( '/api/v1/BluePrint/StructureBluePrint' )
+
+  def getComplex( self, id ):
+    complex = self.cinp.get( '/api/v1/Building/Complex:{0}:'.format( id ) )
+    complex[ 'site' ] = self.cinp.uri.extractIds( [ complex[ 'site' ] ] )[0]
+    return complex

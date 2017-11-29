@@ -15,6 +15,7 @@ cinp = CInP( 'Contractor', '0.1' )
 @cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL' ] )
 class Complex( models.Model ):
   contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )  # TODO: ReadOnly from API
+  site_id = models.CharField( max_length=40 )  # NOTE: for now this is set when created, but not updated, hopfully ccomplexes don't move sites much
   tsname = models.CharField( max_length=50, unique=True, blank=True, null=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -71,4 +72,4 @@ class BluePrint( models.Model ):
     return True
 
   def __str__( self ):
-    return 'BluePrint, contractor: "{0}" tsname: "{1}"'.format( self.contractor_id, self.tsname )
+    return 'BluePrint, contractor: "{0}" name: "{1}"'.format( self.contractor_id, self.name )

@@ -6,7 +6,7 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-from django.utils import timezone
+from datetime import datetime, timezone
 
 from architect.Inspector.models import Inspection
 from architect.Builder.models import Instance, Job
@@ -37,7 +37,7 @@ for inspection in Inspection.objects.all():
       instance = Instance()
       instance.member = inspection.member
       instance.hostname = inspection.member.hostname_pattern.format( offset=offset, id=structure_id, blueprint=inspection.member.blueprint, site=inspection.member.site )
-      instance.requested_at = timezone.now()
+      instance.requested_at = datetime.now( timezone.utc )
       instance.structure_id = structure_id
       instance.offset = offset
       instance.clean()

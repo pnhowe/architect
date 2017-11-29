@@ -6,6 +6,8 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
+from datetime import datetime, timezone
+
 from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS
@@ -26,8 +28,10 @@ for blueprint in BluePrint.objects.all():
 print( 'Creating the Plan...' )
 plan = Plan( name='test', description='test', enabled=True )
 plan.script = """
-#seta: not ( *INDEX* % 10 )
+#generic-xenial: not ( *INDEX* % 10 )
 """
+plan.config_values = {}
+plan.last_change = datetime.now( timezone.utc )
 plan.full_clean()
 plan.save()
 
@@ -49,6 +53,5 @@ for complex in Complex.objects.filter( tsname__isnull=False ):
 print( 'setting up blueprint link...' )
 blueprint = BluePrint.objects.get( name='generic-xenial' )
 pb = PlanBluePrint( plan=plan, blueprint=blueprint )
-pb.script_name = 'seta'
 pb.full_clean()
 pb.save()

@@ -6,7 +6,10 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
+from django.db.models import Count
+
 from architect.Plan.models import Plan
+from architect.Builder.models import Instance
 from architect.tcalc.parser import parse
 
 for plan in Plan.objects.filter( enabled=True ):
@@ -35,8 +38,23 @@ for plan in Plan.objects.filter( enabled=True ):
 
   for blueprint_name in slot_list_map:
     slot_list = slot_list_map[ blueprint_name ]
-    complex_counts = [ 0 ] * len( complex_name )
+    target_counts = [ 0 ] * len( complex_name )
     for slot in slot_list:
-      complex_counts[ int( slot / plan.slots_per_complex ) ] += 1
+      target_counts[ int( slot / plan.slots_per_complex ) ] += 1
 
-    print( complex_counts )
+    print( target_counts )
+
+    count_map = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
+    print( count_map )
+
+    for i in range( 0, len( complex_name ) ):
+      name = complex_name[ i ]
+      target_count = target_counts[ i ]
+      try:
+        count = count_map[ name ]
+      except KeyError:
+        count = 0
+
+      for _ in range( count, target_count ):
+        instance = Instance.create( plan, name, blueprint_name )
+        print( 'new instance "{0}"'.format( instance ) )
