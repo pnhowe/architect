@@ -12,7 +12,7 @@ from architect.Plan.models import Plan
 from architect.Builder.models import Instance
 from architect.tcalc.parser import parse
 
-for plan in Plan.objects.filter( enabled=True ):
+for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay
   print( 'doing plan "{0}"...'.format( plan ) )
 
   complex_name = []
@@ -58,3 +58,7 @@ for plan in Plan.objects.filter( enabled=True ):
       for _ in range( count, target_count ):
         instance = Instance.create( plan, name, blueprint_name )
         print( 'new instance "{0}"'.format( instance ) )
+
+# TODO: and delete
+# TODO: also move, probably need a move flag
+# TODO: and a move only flag

@@ -8,18 +8,19 @@ from datetime import datetime, timezone
 from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan
 
+from architect.Contractor.libcontractor import getContractor
 
 cinp = CInP( 'Builder', '0.1' )
 
 
 @cinp.model( property_list=[ 'state', 'config_values' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Instance( models.Model ):
-  nonce = models.CharField( max_length=22, unique=True )
+  nonce = models.CharField( max_length=26, unique=True )
   plan = models.ForeignKey( Plan, on_delete=models.PROTECT )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )
   blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT )
   hostname = models.CharField( max_length=200, unique=True )
-  structure_id = models.IntegerField( null=True, blank=True, unique=True )
+  contractor_id = models.IntegerField( null=True, blank=True, unique=True )  # Contractor structure id
   requested_at = models.DateTimeField( null=True, blank=True )
   built_at = models.DateTimeField( null=True, blank=True )
   unrequested_at = models.DateTimeField( null=True, blank=True )
@@ -39,16 +40,16 @@ class Instance( models.Model ):
 
   @property
   def state( self ):
-    if self.structure_id is None:
+    if self.contractor_id is None:
       return 'planned'
 
-    if not self.destroyed_at and not self.unrequested_at and not self.build_at and not self.requested_at:
+    if not self.destroyed_at and not self.unrequested_at and not self.built_at and not self.requested_at:
       return 'new'
 
-    if not self.destroyed_at and not self.unrequested_at and not self.build_at and self.requested_at:
+    if not self.destroyed_at and not self.unrequested_at and not self.built_at and self.requested_at:
       return 'requested'
 
-    if not self.destroyed_at and not self.unrequested_at and self.build_at:
+    if not self.destroyed_at and not self.unrequested_at and self.built_at:
       return 'built'
 
     if not self.destroyed_at and self.unrequested_at:
@@ -56,6 +57,8 @@ class Instance( models.Model ):
 
     if self.destroyed_at:
       return 'destroyed'
+
+    return 'unknown'
 
   @property
   def config_values( self ):
@@ -65,8 +68,8 @@ class Instance( models.Model ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
-    if not self.structure_id:
-      self.structure_id = None
+    if not self.contractor_id:
+      self.contractor_id = None
 
     errors = {}
 
@@ -82,14 +85,39 @@ class Instance( models.Model ):
     return 'Instance "{0}" of "{1}" in "{2}" blueprint "{3}"'.format( self.hostname, self.plan.name, self.complex, self.blueprint )
 
 
-@cinp.model( property_list=[ 'state', 'config_values' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
+@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Job( models.Model ):
-  JOB_ACTION_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'regenerate', 'regenerate' ) )
-  instance = models.ForeignKey( Instance, on_delete=models.CASCADE )
-  job_id = models.IntegerField()  # contractor build job id
-  action = models.CharField( max_length=20, choices=JOB_ACTION_CHOICES, default='none' )
+  JOB_ACTION_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'rebuild', 'rebuild' ), ( 'move', 'move' ) )
+  instance = models.OneToOneField( Instance, on_delete=models.CASCADE )
+  action = models.CharField( max_length=7, choices=JOB_ACTION_CHOICES )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
+
+  @staticmethod
+  def create( instance, action ):
+    contractor = getContractor()
+    if action == 'build':
+      if instance.contractor_id is None:
+        structure = contractor.createStructure( instance.complex.contractor_id, instance.blueprint.contractor_id, instance.hostname )
+        instance.contractor_id = structure
+        instance.full_clean()
+        instance.save()
+
+        # register webhook so we know when it is done
+
+    else:
+      raise Exception( 'Not implemented' )
+
+  def jobFinished( self ):
+    if self.action == 'build':
+      self.instance.setBuilt()
+
+    elif self.action == 'destroy':
+      self.instance.setDestroyed()
+
+    elif self.action == 'rebuild':
+      self.instance.setDestroyed()
+      Job.create( self.instance, 'build' )
 
   @cinp.check_auth()
   @staticmethod

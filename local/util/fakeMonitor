@@ -26,7 +26,7 @@ complexes = {
                          'reliability': 0.80
                       },
 
-              'cplx8': {
+              'cplx2': {
                          'cost': 5,
                          'availability': 0.90,
                          'reliability': 0.92

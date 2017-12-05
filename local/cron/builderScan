@@ -6,42 +6,18 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-from datetime import datetime, timezone
-
-from architect.Inspector.models import Inspection
+from architect.Plan.models import Plan
 from architect.Builder.models import Instance, Job
 
-for inspection in Inspection.objects.all():
-  if Job.objects.filter( instance__in=inspection.member.instance_set.all() ).count() != 0:
-    print( '{0} busy, skipping...'.format( inspection.member ) )
+for plan in Plan.objects.all():
+  job_count = Job.objects.filter( instance__plan=plan ).count()
+  if job_count >= plan.max_inflight:
     continue
 
-  curent_count = inspection.member.instance_set.all().count()
-  ( deadband_low, deadband_high ) = inspection.target_range
-  if deadband_low is None or deadband_high is None:
-    continue
+  new_instances = Instance.objects.filter( plan=plan, contractor_id__isnull=True )
+  for instance in new_instances[ : plan.max_inflight - job_count ]:
+    print( 'Creating instance for "{0}"'.format( instance ) )
+    Job.create( instance, 'build' )
 
-  print( 'for {0} want {1}-{2} have {3}'.format( inspection.member, deadband_low, deadband_high, inspection.member.instance_set.all().count() ) )
-  if curent_count < deadband_low:
-    for i in range( 0, inspection.target_count - curent_count ):
-      offset_list = set( Instance.objects.filter( member=inspection.member ).values_list( 'offset', flat=True ) )
-      if offset_list == set([]):
-        offset = 1
-      else:
-        offset = list( ( set( range( 1, max( offset_list ) + 2 ) ) - offset_list ) )
-        offset.sort()
-        offset = offset[0]
-
-      print( 'Adding offfset {0} of "{1}"'.format( offset, inspection.member ) )
-      structure_id = offset + ( inspection.member.pk * 1000 )
-      instance = Instance()
-      instance.member = inspection.member
-      instance.hostname = inspection.member.hostname_pattern.format( offset=offset, id=structure_id, blueprint=inspection.member.blueprint, site=inspection.member.site )
-      instance.requested_at = datetime.now( timezone.utc )
-      instance.structure_id = structure_id
-      instance.offset = offset
-      instance.clean()
-      instance.save()
-
-  elif curent_count > deadband_high:
-    pass  # do the delete thing
+# scan for things that need to be moved
+# scan for things that need to be removed

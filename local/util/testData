@@ -28,7 +28,7 @@ for blueprint in BluePrint.objects.all():
 print( 'Creating the Plan...' )
 plan = Plan( name='test', description='test', enabled=True )
 plan.script = """
-#generic-xenial: not ( *INDEX* % 10 )
+#generic-xenial: not ( *INDEX* % 40 )
 """
 plan.config_values = {}
 plan.last_change = datetime.now( timezone.utc )
@@ -51,7 +51,8 @@ for complex in Complex.objects.filter( tsname__isnull=False ):
   pc.save()
 
 print( 'setting up blueprint link...' )
-blueprint = BluePrint.objects.get( name='generic-xenial' )
+#blueprint = BluePrint.objects.get( name='generic-xenial' )
+blueprint = BluePrint.objects.get( name='generic-manual-structure' )
 pb = PlanBluePrint( plan=plan, blueprint=blueprint )
 pb.full_clean()
 pb.save()

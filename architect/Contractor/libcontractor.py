@@ -20,5 +20,10 @@ class Contractor():
 
   def getComplex( self, id ):
     complex = self.cinp.get( '/api/v1/Building/Complex:{0}:'.format( id ) )
-    complex[ 'site' ] = self.cinp.uri.extractIds( [ complex[ 'site' ] ] )[0]
+    complex[ 'site' ] = self.cinp.uri.extractIds( complex[ 'site' ] )[0]
     return complex
+
+  def createStructure( self, complex, blueprint, hostname ):
+    structure = self.cinp.call( '/api/v1/Building/Complex:{0}:(createStructure)'.format( complex ), { 'blueprint': '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint ), 'hostname': hostname } )
+
+    return self.cinp.uri.extractIds( structure )[0]

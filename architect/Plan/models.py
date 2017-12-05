@@ -1,4 +1,3 @@
-import re
 import hashlib
 import base64
 
@@ -9,12 +8,9 @@ from cinp.orm_django import DjangoCInP as CInP
 
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
-from architect.fields import MapField
+from architect.fields import MapField, script_name_regex
 from architect.tcalc.parser import lint
 
-
-site_name_regex = re.compile( '^[a-zA-Z0-9\-]{2,10}$' )
-script_name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 
 cinp = CInP( 'Plan', '0.1' )
 
@@ -27,7 +23,7 @@ class Plan( models.Model ):
                        {compex} -> complex name (up to 50 chars)
                        {blueprint} -> blueprint name (up to 50 chars)
                        {site} -> site name (up to 40 chars)
-                       {nonce} -> nonce (random one-time use string, 22 chars)
+                       {nonce} -> nonce (random one-time use string, 26 chars)
     the target hostname is length 200 chars
   """
   name = models.CharField( max_length=50, primary_key=True )
@@ -54,11 +50,12 @@ class Plan( models.Model ):
     plan.nonce_counter += 1
     plan.save()
 
+    # nonce must be hostname safe and lowercase
     nonce = hashlib.md5()
     nonce.update( '{0:20d}'.format( counter ).encode() )
     nonce.update( self.name.encode() )
 
-    return base64.encodebytes( nonce.digest() ).strip( b'=\n' ).decode()
+    return base64.b32encode( nonce.digest() ).strip( b'=' ).lower().decode()
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )

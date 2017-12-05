@@ -1,8 +1,10 @@
+import re
 import json
 
 from django.db import models
 from django.core.exceptions import ValidationError
 
+script_name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 JSON_MAGIC = '\x02JSON\x03'
 
 
