@@ -9,15 +9,26 @@ django.setup()
 from architect.Plan.models import Plan
 from architect.Builder.models import Instance, Job
 
+print( 'Checking Plans...' )
 for plan in Plan.objects.all():
+  print( 'Checking plan "{0}"...'.format( plan ) )
+
   job_count = Job.objects.filter( instance__plan=plan ).count()
   if job_count >= plan.max_inflight:
     continue
+
+  # scan for things that need to be moved
 
   new_instances = Instance.objects.filter( plan=plan, contractor_id__isnull=True )
   for instance in new_instances[ : plan.max_inflight - job_count ]:
     print( 'Creating instance for "{0}"'.format( instance ) )
     Job.create( instance, 'build' )
 
-# scan for things that need to be moved
-# scan for things that need to be removed
+  # scan for things that need to be removed
+
+print( 'Running Jobs...' )
+for job in Job.objects.filter( state__in=( 'new', 'done' ) ):
+  print( 'Running job"{0}"...'.format( job ) )
+  job.run()
+
+print( 'Done.' )

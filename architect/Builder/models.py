@@ -1,3 +1,6 @@
+import string
+import random
+
 from django.db import models
 
 from cinp.orm_django import DjangoCInP as CInP
@@ -28,6 +31,44 @@ class Instance( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
+  def setRequested( self ):
+    self.requested_at = datetime.now( timezone.utc )
+    self.built_at = None
+    self.unrequested_at = None
+    self.destroyed_at = None
+    self.full_clean()
+    self.save()
+
+  def setBuilt( self ):
+    if self.requested_at is None:
+      self.requested_at = datetime.now( timezone.utc )
+    self.built_at = datetime.now( timezone.utc )
+    self.unrequested_at = None
+    self.destroyed_at = None
+    self.full_clean()
+    self.save()
+
+  def setUnrequested( self ):
+    if self.requested_at is None:
+      self.requested_at = datetime.now( timezone.utc )
+    if self.built_at is None:
+      self.built_at = datetime.now( timezone.utc )
+    self.unrequested_at = datetime.now( timezone.utc )
+    self.destroyed_at = None
+    self.full_clean()
+    self.save()
+
+  def setDestroyed( self ):
+    if self.requested_at is None:
+      self.requested_at = datetime.now( timezone.utc )
+    if self.built_at is None:
+      self.built_at = datetime.now( timezone.utc )
+    if self.unrequested_at is None:
+      self.unrequested_at = datetime.now( timezone.utc )
+    self.destroyed_at = datetime.now( timezone.utc )
+    self.full_clean()
+    self.save()
+
   @staticmethod
   def create( plan, complex_tsname, blueprint_name ):
     result = Instance( plan=plan, complex=Complex.objects.get( tsname=complex_tsname ), blueprint=BluePrint.objects.get( name=blueprint_name ) )
@@ -39,10 +80,7 @@ class Instance( models.Model ):
     return result
 
   @property
-  def state( self ):
-    if self.contractor_id is None:
-      return 'planned'
-
+  def state( self ):  # TODO: more status for rebuilding and moving?
     if not self.destroyed_at and not self.unrequested_at and not self.built_at and not self.requested_at:
       return 'new'
 
@@ -82,42 +120,87 @@ class Instance( models.Model ):
     return True
 
   def __str__( self ):
-    return 'Instance "{0}" of "{1}" in "{2}" blueprint "{3}"'.format( self.hostname, self.plan.name, self.complex, self.blueprint )
+    return 'Instance({0}) "{1}" of "{2}" in "{3}" blueprint "{4}"'.format( self.pk, self.hostname, self.plan.name, self.complex, self.blueprint )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
+@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE' ] )
 class Job( models.Model ):
   JOB_ACTION_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'rebuild', 'rebuild' ), ( 'move', 'move' ) )
+  JOB_STATE_CHOICES = ( ( 'new', 'new' ), ( 'waiting', 'waiting' ), ( 'done', 'done' ), (  'error', 'error' ) )
   instance = models.OneToOneField( Instance, on_delete=models.CASCADE )
   action = models.CharField( max_length=7, choices=JOB_ACTION_CHOICES )
+  state = models.CharField( max_length=7, choices=JOB_STATE_CHOICES )
+  web_hook_token = models.CharField( max_length=30, blank=True, null=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
   @staticmethod
   def create( instance, action ):
-    contractor = getContractor()
-    if action == 'build':
-      if instance.contractor_id is None:
-        structure = contractor.createStructure( instance.complex.contractor_id, instance.blueprint.contractor_id, instance.hostname )
-        instance.contractor_id = structure
-        instance.full_clean()
-        instance.save()
+    job = Job( instance=instance, action=action )
+    job.state = 'new'
+    job.full_clean()
+    job.save()
+    return job
 
-        # register webhook so we know when it is done
+  def _registerWebHook( self, contractor ):
+    self.web_hook_token = ''.join( random.choice( string.ascii_letters ) for _ in range( 30 ) )
+    self.state = 'waiting'
+    self.full_clean()
+    contractor.registerWebHook( self.pk, self.instance.contractor_id, self.web_hook_token )
+    self.save()
 
-    else:
-      raise Exception( 'Not implemented' )
+  def run( self ):
+    if self.state == 'done':
+      if self.action == 'build':
+        self.instance.setBuilt()
 
-  def jobFinished( self ):
-    if self.action == 'build':
-      self.instance.setBuilt()
+      elif self.action == 'destroy':
+        self.instance.setDestroyed()
 
-    elif self.action == 'destroy':
-      self.instance.setDestroyed()
+      elif self.action == 'rebuild':
+        self.instance.setDestroyed()
+        Job.create( self.instance, 'build' )
 
-    elif self.action == 'rebuild':
-      self.instance.setDestroyed()
-      Job.create( self.instance, 'build' )
+      self.delete()
+
+    if self.state == 'new':
+      contractor = getContractor()
+      if self.action == 'build':
+        if self.instance.contractor_id is None:
+          structure = contractor.createStructure( self.instance.complex.contractor_id, self.instance.blueprint.contractor_id, self.instance.hostname )
+          self.instance.contractor_id = structure
+          self.instance.save()
+          self.instance.full_clean()
+
+        self._registerWebHook( contractor )
+        self.instance.setRequested()
+
+      elif self.action == 'destroy':
+        contractor.destroyStructure( self.instance.contractor_id, delete=True )
+        self._registerWebHook( contractor )
+        self.instance.setUnrequested()
+
+      elif self.action == 'rebuild':
+        contractor.destroyStructure( self.instance.contractor_id )
+        self._registerWebHook( contractor )
+        self.instance.setUnrequested()
+
+      else:
+        raise Exception( 'Not implemented' )
+
+    # ignore every other state
+
+  @cinp.action( return_type='String', paramater_type_list=[ 'String', 'String', 'String', 'String' ] )
+  def jobNotify( self, token, structure, script, at ):
+    if token != self.web_hook_token:
+      return 'invalid token'
+
+    self.web_hook_token = None
+    self.state = 'done'
+    self.full_clean()
+    self.save()
+
+    return 'thanks'
 
   @cinp.check_auth()
   @staticmethod
@@ -125,4 +208,4 @@ class Job( models.Model ):
     return True
 
   def __str__( self ):
-    return 'Job id "{0}" for {1}'.format( self.id, self.instance )
+    return 'Job({0}) for {1}'.format( self.pk, self.instance )

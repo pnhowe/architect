@@ -53,13 +53,20 @@ class RawTimeSeries( TimeSeries ):
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
+    errors = {}
     if not metric_regex.match( self.metric ):
-      raise ValidationError( 'Metric "{0}" is invalid'.format( self.name ) )
+      errors[ 'metric' ] = 'invalid "{0}"'.format( self.metric )
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
     return True
+
+  def __str__( self ):
+    return 'RawTimeSeries for "{0}"'.format( self.metric )
 
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
@@ -88,6 +95,9 @@ class CostTS( TimeSeries ):
   def checkAuth( user, method, id_list, action=None ):
     return True
 
+  def __str__( self ):
+    return 'CostTS for "{0}"'.format( self.complex )
+
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class AvailabilityTS( TimeSeries ):
@@ -106,6 +116,9 @@ class AvailabilityTS( TimeSeries ):
   def checkAuth( user, method, id_list, action=None ):
     return True
 
+  def __str__( self ):
+    return 'AvailabilityTS for "{0}"'.format( self.complex )
+
 
 @cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class ReliabilityTS( TimeSeries ):
@@ -123,6 +136,9 @@ class ReliabilityTS( TimeSeries ):
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
     return True
+
+  def __str__( self ):
+    return 'ReliabilityTS for "{0}"'.format( self.complex )
 
 
 @cinp.model( property_list=[ 'uid' ], not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )

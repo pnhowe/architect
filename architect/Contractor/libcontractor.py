@@ -27,3 +27,12 @@ class Contractor():
     structure = self.cinp.call( '/api/v1/Building/Complex:{0}:(createStructure)'.format( complex ), { 'blueprint': '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint ), 'hostname': hostname } )
 
     return self.cinp.uri.extractIds( structure )[0]
+
+  def registerWebHook( self, job_id, structure_id, token ):
+    data = {}
+    data[ 'structure' ] = '/api/v1/Building/Structure:{0}:'.format( structure_id )
+    data[ 'one_shot' ] = True
+    data[ 'extra_data' ] = { 'token': token }
+    data[ 'type' ] = 'call'
+    data[ 'url' ] = 'http://127.0.0.1:8880/api/v1/Builder/Job:{0}:(jobNotify)'.format( job_id )
+    self.cinp.create( '/api/v1/PostOffice/StructureBox', data )
