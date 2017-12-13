@@ -6,25 +6,49 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
+import logging
+
 from architect.Plan.models import Plan
 from architect.Builder.models import Instance, Job
+
+logging.basicConfig( level=logging.DEBUG )
 
 print( 'Checking Plans...' )
 for plan in Plan.objects.all():
   print( 'Checking plan "{0}"...'.format( plan ) )
 
-  job_count = Job.objects.filter( instance__plan=plan ).count()
-  if job_count >= plan.max_inflight:
+  jobs_needed = plan.max_inflight - Job.objects.filter( instance__plan=plan ).count()
+  if jobs_needed <= 0:
     continue
 
   # scan for things that need to be moved
 
-  new_instances = Instance.objects.filter( plan=plan, contractor_id__isnull=True )
-  for instance in new_instances[ : plan.max_inflight - job_count ]:
-    print( 'Creating instance for "{0}"'.format( instance ) )
-    Job.create( instance, 'build' )
+  # building new items
+  # first structures for things with foundations
+  todo = Instance.objects.filter( plan=plan, foundation_built=True, structure_built=False, job__isnull=True )
+  for instance in todo[ : jobs_needed ]:
+    print( 'Creating structure build for "{0}"'.format( instance ) )
+    Job.create( instance, 'structure', 'build' )
+    jobs_needed -= 1
 
-  # scan for things that need to be removed
+  if jobs_needed <= 0:
+    continue
+
+  # now foundations
+  todo = Instance.objects.filter( plan=plan, foundation_built=False, job__isnull=True )
+  for instance in todo[ : jobs_needed ]:
+    print( 'Creating foundation build for "{0}"'.format( instance ) )
+    Job.create( instance, 'foundation', 'build' )
+    jobs_needed -= 1
+
+  if jobs_needed <= 0:
+    continue
+
+  # destroying items
+  todo = Instance.objects.filter( plan=plan, unrequested_at__isnull=False, destroyed_at__isnull=True, job__isnull=True )
+  for instance in todo[ : jobs_needed ]:
+    print( 'Destroying instance for "{0}"'.format( instance ) )
+    Job.create( instance, 'destroy' )
 
 print( 'Running Jobs...' )
 for job in Job.objects.filter( state__in=( 'new', 'done' ) ):

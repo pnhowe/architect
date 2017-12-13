@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='AvailabilityTS',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('complex', models.OneToOneField(to='Contractor.Complex')),
@@ -26,14 +26,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Controller',
             fields=[
-                ('name', models.CharField(primary_key=True, serialize=False, max_length=50)),
-                ('scaler_type', models.CharField(choices=[('none', 'None'), ('step', 'Step'), ('linear', 'Linear')], max_length=5, default='none')),
+                ('name', models.CharField(max_length=50, serialize=False, primary_key=True)),
+                ('scaler_type', models.CharField(max_length=5, default='none', choices=[('none', 'None'), ('step', 'Step'), ('linear', 'Linear')])),
                 ('min_instances', models.IntegerField(null=True, blank=True)),
                 ('max_instances', models.IntegerField(null=True, blank=True)),
                 ('build_ahead', models.IntegerField(default=0)),
                 ('regenerate_rate', models.IntegerField(default=1)),
-                ('tsd_metric', models.CharField(null=True, blank=True, max_length=200)),
-                ('lockout_query', models.CharField(null=True, blank=True, max_length=200)),
+                ('tsd_metric', models.CharField(max_length=200, null=True, blank=True)),
+                ('lockout_query', models.CharField(max_length=200, null=True, blank=True)),
                 ('p_value', models.FloatField(null=True, blank=True)),
                 ('a_value', models.FloatField(null=True, blank=True)),
                 ('b_value', models.FloatField(null=True, blank=True)),
@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='CostTS',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('complex', models.OneToOneField(to='Contractor.Complex')),
@@ -61,7 +61,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RawTimeSeries',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('metric', models.CharField(max_length=200)),
@@ -73,7 +73,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ReliabilityTS',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('complex', models.OneToOneField(to='Contractor.Complex')),

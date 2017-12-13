@@ -6,26 +6,30 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
+import random
 from django.db.models import Count
 
 from architect.Plan.models import Plan
 from architect.Builder.models import Instance
 from architect.tcalc.parser import parse
 
-for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay
+# IMPORTANT!!!! this dosen't have any locking, only one cron process at a time
+# Also: this really need through testing, make sure to  test when there are jobs inflight
+
+for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
   print( 'doing plan "{0}"...'.format( plan ) )
 
-  complex_name = []
+  complex_name_list = []
   complex_cost = []
   complex_availability = []
   complex_reliability = []
   for pc in plan.plancomplex_set.all().order_by( 'id' ):  # Important the complexes are evaulated in a consistant order_by
-    complex_name.append( pc.complex.tsname )
+    complex_name_list.append( pc.complex.tsname )
     complex_cost.append( pc.cost.last_value )
     complex_availability.append( pc.availability.last_value )
     complex_reliability.append( pc.reliability.last_value )
 
-  print( complex_name )
+  print( complex_name_list )
   print( complex_cost )
   print( complex_availability )
   print( complex_reliability )
@@ -38,27 +42,45 @@ for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay
 
   for blueprint_name in slot_list_map:
     slot_list = slot_list_map[ blueprint_name ]
-    target_counts = [ 0 ] * len( complex_name )
+    target_counts = [ 0 ] * len( complex_name_list )
     for slot in slot_list:
       target_counts[ int( slot / plan.slots_per_complex ) ] += 1
 
-    print( target_counts )
+    target_map = dict( ( complex_name_list[ i ], target_counts[ i ] ) for i in range( 0, len( complex_name_list ) ) )
+    print( 'target' )
+    print( target_map )
 
-    count_map = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
-    print( count_map )
+    current_map = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
+    print( 'current' )
+    print( current_map )
 
-    for i in range( 0, len( complex_name ) ):
-      name = complex_name[ i ]
-      target_count = target_counts[ i ]
-      try:
-        count = count_map[ name ]
-      except KeyError:
-        count = 0
+    for name in complex_name_list:
+      diff = current_map.get( name, 0 ) - target_map.get( name, 0 )
+      if diff == 0:
+        pass
 
-      for _ in range( count, target_count ):
-        instance = Instance.create( plan, name, blueprint_name )
-        print( 'new instance "{0}"'.format( instance ) )
+      elif diff < 0 and plan.can_build:
+        for _ in range( diff, 0 ):
+          instance = Instance.create( plan, name, blueprint_name )
+          print( 'new instance "{0}"'.format( instance ) )
 
-# TODO: and delete
+      elif diff > 0 and plan.can_destroy:
+        # first find anything that hasn't been built, or is building and clean it up
+        unbuilt = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, built_at__isnull=True, job__isnull=True )
+        for instance in unbuilt[ :diff ]:
+          print( 'delete unused instance "{0}"'.format( instance ) )
+          instance.delete()
+          diff -= 1
+
+        if diff > 0:
+          # now to take out what is all ready built
+          built = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, job__isnull=True )
+          for _ in range( 0, diff ):
+            instance = random.choice( built )
+            print( 'unrequesting "{0}"'.format( instance ) )
+            instance.setUnrequested()
+
+
+
 # TODO: also move, probably need a move flag
 # TODO: and a move only flag

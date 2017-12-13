@@ -15,7 +15,7 @@ from architect.tcalc.parser import lint
 cinp = CInP( 'Plan', '0.1' )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_method_list=[ 'CALL' ] )
 class Plan( models.Model ):
   """
   hostname_pattern -> python.format format,
@@ -41,6 +41,9 @@ class Plan( models.Model ):
   max_inflight = models.IntegerField( default=2 )  # number of things that can be changing at the same time
   last_change = models.DateTimeField()
   nonce_counter = models.IntegerField( default=1 )  # is hashed (with other stuff) to be used as the nonc string, https://stackoverflow.com/questions/4567089/hash-function-that-produces-short-hashes
+  can_move = models.BooleanField( default=False )
+  can_destroy = models.BooleanField( default=False )
+  can_build = models.BooleanField( default=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 

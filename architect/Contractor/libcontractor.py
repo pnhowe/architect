@@ -23,16 +23,49 @@ class Contractor():
     complex[ 'site' ] = self.cinp.uri.extractIds( complex[ 'site' ] )[0]
     return complex
 
-  def createStructure( self, complex, blueprint, hostname ):
-    structure = self.cinp.call( '/api/v1/Building/Complex:{0}:(createStructure)'.format( complex ), { 'blueprint': '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint ), 'hostname': hostname } )
+  def createFoundation( self, complex, blueprint, hostname ):
+    foundation = self.cinp.call( '/api/v1/Building/Complex:{0}:(createFoundation)'.format( complex ), { 'hostname': hostname } )
+    print( '************************ created "{0}"'.format( foundation ) )
 
-    return self.cinp.uri.extractIds( structure )[0]
+    foundation_id = self.cinp.uri.extractIds( foundation )[0]
+    self.cinp.call( '/api/v1/Building/Foundation:{0}:(setLocated)'.format( foundation_id ), {} )
+    return foundation_id
 
-  def registerWebHook( self, job_id, structure_id, token ):
+  def destroyFoundation( self, id ):
+    self.cinp.call( '/api/v1/Building/Foundation:{0}:(doDestroy)'.format( id ), {} )
+
+  def createStructure( self, site_id, foundation_id, blueprint, hostname, config_values ):
     data = {}
-    data[ 'structure' ] = '/api/v1/Building/Structure:{0}:'.format( structure_id )
+    data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
+    data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
+    data[ 'hostname' ] = hostname
+    data[ 'blueprint' ] = '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint )
+    data[ 'config_values' ] = config_values
+    data[ 'auto_build' ] = False
+
+    structure = self.cinp.create( '/api/v1/Building/Structure'.format( complex ), data )
+    print( '************************  created "{0}"'.format( structure ) )
+    return self.cinp.uri.extractIds( structure[0] )[0]
+
+  def destroyStructure( self, id ):
+    self.cinp.call( '/api/v1/Building/Structure:{0}:(doDestroy)'.format( id ), {} )
+
+  def buildFoundation( self, id ):
+    job_id = self.cinp.call( '/api/v1/Building/Foundation:{0}:(doCreate)'.format( id ), {} )
+    print( '------------------------- create Job foundation "{0}"'.format( job_id ) )
+
+  def buildStructure( self, id ):
+    job_id = self.cinp.call( '/api/v1/Building/Structure:{0}:(doCreate)'.format( id ), {} )
+    print( '------------------------- create Job structure "{0}"'.format( job_id ) )
+
+  def registerWebHook( self, target, job_id, target_id, token ):
+    data = {}
+    data[ target ] = '/api/v1/Building/{0}:{1}:'.format( target.title(), target_id )
     data[ 'one_shot' ] = True
-    data[ 'extra_data' ] = { 'token': token }
+    data[ 'extra_data' ] = { 'token': token, 'target': target }
     data[ 'type' ] = 'call'
     data[ 'url' ] = 'http://127.0.0.1:8880/api/v1/Builder/Job:{0}:(jobNotify)'.format( job_id )
-    self.cinp.create( '/api/v1/PostOffice/StructureBox', data )
+    if target == 'foundation':
+      self.cinp.create( '/api/v1/PostOffice/FoundationBox', data )
+    else:
+      self.cinp.create( '/api/v1/PostOffice/StructureBox', data )
