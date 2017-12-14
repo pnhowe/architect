@@ -47,6 +47,7 @@ class Instance extends React.Component
             instance_list.push( { id: id,
                                 plan: instance.plan,
                                 hostname: instance.hostname,
+                                state: instance.state,
                                 created: instance.created,
                                 updated: instance.updated,
                               } );
@@ -93,6 +94,7 @@ class Instance extends React.Component
           <TableCell>Id</TableCell>
           <TableCell>Plan</TableCell>
           <TableCell>Hostname</TableCell>
+          <TableCell>State</TableCell>
           <TableCell>Created</TableCell>
           <TableCell>Updated</TableCell>
         </TableHead>
@@ -101,6 +103,7 @@ class Instance extends React.Component
             <TableCell><Link to={ '/instance/' + item.id }>{ item.id }</Link></TableCell>
             <TableCell>{ item.plan }</TableCell>
             <TableCell>{ item.hostname }</TableCell>
+            <TableCell>{ item.state }</TableCell>
             <TableCell>{ item.created }</TableCell>
             <TableCell>{ item.updated }</TableCell>
           </TableRow>

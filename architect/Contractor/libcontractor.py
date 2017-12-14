@@ -28,8 +28,18 @@ class Contractor():
     print( '************************ created "{0}"'.format( foundation ) )
 
     foundation_id = self.cinp.uri.extractIds( foundation )[0]
-    self.cinp.call( '/api/v1/Building/Foundation:{0}:(setLocated)'.format( foundation_id ), {} )
     return foundation_id
+
+  def buildFoundation( self, id ):
+    # we have to set locate manually b/c the structure is not auto-configure, at
+    # this point contractor dosen't autolocate foundations for non auto-configure structures.
+    # we are setting Located here so that a job dosen't get auto created before we
+    # can trigger the creation event, techinically there is still a  small hole that
+    #  a job can be built.  TODO: tweek foundatino so that it isn't auto built,
+    # would be nice if that also made it so we didn't have to setLocated
+    self.cinp.call( '/api/v1/Building/Foundation:{0}:(setLocated)'.format( id ), {} )
+    job_id = self.cinp.call( '/api/v1/Building/Foundation:{0}:(doCreate)'.format( id ), {} )
+    print( '------------------------- create Job foundation "{0}"'.format( job_id ) )
 
   def destroyFoundation( self, id ):
     self.cinp.call( '/api/v1/Building/Foundation:{0}:(doDestroy)'.format( id ), {} )
@@ -47,16 +57,12 @@ class Contractor():
     print( '************************  created "{0}"'.format( structure ) )
     return self.cinp.uri.extractIds( structure[0] )[0]
 
-  def destroyStructure( self, id ):
-    self.cinp.call( '/api/v1/Building/Structure:{0}:(doDestroy)'.format( id ), {} )
-
-  def buildFoundation( self, id ):
-    job_id = self.cinp.call( '/api/v1/Building/Foundation:{0}:(doCreate)'.format( id ), {} )
-    print( '------------------------- create Job foundation "{0}"'.format( job_id ) )
-
   def buildStructure( self, id ):
     job_id = self.cinp.call( '/api/v1/Building/Structure:{0}:(doCreate)'.format( id ), {} )
     print( '------------------------- create Job structure "{0}"'.format( job_id ) )
+
+  def destroyStructure( self, id ):
+    self.cinp.call( '/api/v1/Building/Structure:{0}:(doDestroy)'.format( id ), {} )
 
   def registerWebHook( self, target, job_id, target_id, token ):
     data = {}

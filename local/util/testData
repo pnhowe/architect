@@ -31,7 +31,10 @@ plan.script = """
 #generic-manual-structure: not ( *INDEX* % 40 )
 """
 plan.config_values = {}
+plan.max_inflight = 4
 plan.last_change = datetime.now( timezone.utc )
+plan.can_build = True
+plan.can_destroy = True
 plan.full_clean()
 plan.save()
 

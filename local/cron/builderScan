@@ -9,7 +9,7 @@ django.setup()
 import logging
 
 from architect.Plan.models import Plan
-from architect.Builder.models import Instance, Job
+from architect.Builder.models import Action, Job
 
 logging.basicConfig( level=logging.DEBUG )
 
@@ -17,42 +17,22 @@ print( 'Checking Plans...' )
 for plan in Plan.objects.all():
   print( 'Checking plan "{0}"...'.format( plan ) )
 
-  jobs_needed = plan.max_inflight - Job.objects.filter( instance__plan=plan ).count()
-  if jobs_needed <= 0:
+  actions_needed = plan.max_inflight - Action.objects.filter( instance__plan=plan ).exclude( state={} ).count()
+
+  if actions_needed <= 0:
     continue
 
-  # scan for things that need to be moved
-
-  # building new items
-  # first structures for things with foundations
-  todo = Instance.objects.filter( plan=plan, foundation_built=True, structure_built=False, job__isnull=True )
-  for instance in todo[ : jobs_needed ]:
-    print( 'Creating structure build for "{0}"'.format( instance ) )
-    Job.create( instance, 'structure', 'build' )
-    jobs_needed -= 1
-
-  if jobs_needed <= 0:
-    continue
-
-  # now foundations
-  todo = Instance.objects.filter( plan=plan, foundation_built=False, job__isnull=True )
-  for instance in todo[ : jobs_needed ]:
-    print( 'Creating foundation build for "{0}"'.format( instance ) )
-    Job.create( instance, 'foundation', 'build' )
-    jobs_needed -= 1
-
-  if jobs_needed <= 0:
-    continue
-
-  # destroying items
-  todo = Instance.objects.filter( plan=plan, unrequested_at__isnull=False, destroyed_at__isnull=True, job__isnull=True )
-  for instance in todo[ : jobs_needed ]:
-    print( 'Destroying instance for "{0}"'.format( instance ) )
-    Job.create( instance, 'destroy' )
+  for action in Action.objects.filter( instance__plan=plan, state={} )[ :actions_needed ]:
+    action.start()
 
 print( 'Running Jobs...' )
 for job in Job.objects.filter( state__in=( 'new', 'done' ) ):
   print( 'Running job"{0}"...'.format( job ) )
   job.run()
+
+print( 'Running Actions...' )
+for action in Action.objects.exclude( state={} ):
+  print( 'Running action "{0}"...'.format( action ) )
+  action.run()
 
 print( 'Done.' )

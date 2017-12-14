@@ -10,11 +10,11 @@ import random
 from django.db.models import Count
 
 from architect.Plan.models import Plan
-from architect.Builder.models import Instance
+from architect.Builder.models import Instance, Action
 from architect.tcalc.parser import parse
 
 # IMPORTANT!!!! this dosen't have any locking, only one cron process at a time
-# Also: this really need through testing, make sure to  test when there are jobs inflight
+# Also: this really need through testing, make sure to  test when there are jobs/Actions inflight
 
 for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
   print( 'doing plan "{0}"...'.format( plan ) )
@@ -59,27 +59,28 @@ for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay, 
       if diff == 0:
         pass
 
-      elif diff < 0 and plan.can_build:
+      elif diff < 0 and plan.can_build:  # TODO: look for allready destroyied ones that can be resued
         for _ in range( diff, 0 ):
           instance = Instance.create( plan, name, blueprint_name )
+          Action.create( instance, 'build' )
           print( 'new instance "{0}"'.format( instance ) )
 
       elif diff > 0 and plan.can_destroy:
         # first find anything that hasn't been built, or is building and clean it up
-        unbuilt = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, built_at__isnull=True, job__isnull=True )
+        unbuilt = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, action__state='new' )
         for instance in unbuilt[ :diff ]:
           print( 'delete unused instance "{0}"'.format( instance ) )
+          instance.action.delete()
           instance.delete()
           diff -= 1
 
         if diff > 0:
           # now to take out what is all ready built
-          built = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, job__isnull=True )
+          built = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, action__isnull=True )
           for _ in range( 0, diff ):
             instance = random.choice( built )
             print( 'unrequesting "{0}"'.format( instance ) )
-            instance.setUnrequested()
-
+            Action.create( instance, 'destroy' )
 
 
 # TODO: also move, probably need a move flag
