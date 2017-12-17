@@ -98,9 +98,11 @@ class Action( models.Model ):
       if self.instance.structure_id is None:
         self.instance.structure_id = contractor.createStructure( self.instance.complex.site_id, self.instance.foundation_id, self.instance.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values )
 
+    print( "---------{0}--------".format( self.instance.pk ) )
+
     self.instance.state = 'processing'
-    self.instance.save()
     self.instance.full_clean()
+    self.instance.save()
 
     if self.action == 'build':
       self.state[ 'todo' ] = [ ( 'build', 'foundation' ), ( 'build', 'structure' ) ]

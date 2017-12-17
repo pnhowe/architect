@@ -6,7 +6,7 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
@@ -32,7 +32,7 @@ plan.script = """
 """
 plan.config_values = {}
 plan.max_inflight = 4
-plan.last_change = datetime.now( timezone.utc )
+plan.last_change = datetime.now( timezone.utc ) - timedelta( days=1 )
 plan.can_build = True
 plan.can_destroy = True
 plan.full_clean()

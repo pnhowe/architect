@@ -15,7 +15,7 @@ from architect.tcalc.parser import lint
 cinp = CInP( 'Plan', '0.1' )
 
 
-@cinp.model( not_allowed_method_list=[ 'CALL' ] )
+@cinp.model( not_allowed_method_list=[ 'CALL' ], read_only_list=[ 'nonce_counter', 'last_change' ] )
 class Plan( models.Model ):
   """
   hostname_pattern -> python.format format,

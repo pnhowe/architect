@@ -6,82 +6,126 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-import random
+from datetime import datetime, timedelta, timezone
+
 from django.db.models import Count
 
 from architect.Plan.models import Plan
 from architect.Builder.models import Instance, Action
-from architect.tcalc.parser import parse
+
+from architect.Plan.caculator import caculateCounts, caculateChangePlan
+
+CLEANUP_DESTROYED_AFFTER = 3600  # in seconds
 
 # IMPORTANT!!!! this dosen't have any locking, only one cron process at a time
 # Also: this really need through testing, make sure to  test when there are jobs/Actions inflight
 
+for instance in Instance.objects.filter( state='destroyed', updated__lt=datetime.now( timezone.utc ) - timedelta( seconds=CLEANUP_DESTROYED_AFFTER ) ):
+  print( 'Cleaning up destroyed "{0}"...'.format( instance ) )
+  instance.delete()
+
 for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
   print( 'doing plan "{0}"...'.format( plan ) )
 
+  if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
+    print( 'still hot, skipping...' )
+    continue
+
   complex_name_list = []
-  complex_cost = []
-  complex_availability = []
-  complex_reliability = []
+  complex_cost_list = []
+  complex_availability_list = []
+  complex_reliability_list = []
   for pc in plan.plancomplex_set.all().order_by( 'id' ):  # Important the complexes are evaulated in a consistant order_by
     complex_name_list.append( pc.complex.tsname )
-    complex_cost.append( pc.cost.last_value )
-    complex_availability.append( pc.availability.last_value )
-    complex_reliability.append( pc.reliability.last_value )
+    complex_cost_list.append( pc.cost.last_value )
+    complex_availability_list.append( pc.availability.last_value )
+    complex_reliability_list.append( pc.reliability.last_value )
 
   print( complex_name_list )
-  print( complex_cost )
-  print( complex_availability )
-  print( complex_reliability )
+  print( complex_cost_list )
+  print( complex_availability_list )
+  print( complex_reliability_list )
 
-  calc = parse( plan.script )
-  calc.setBuckets( plan.slots_per_complex, complex_cost, complex_availability, complex_reliability )
-  calc.setTimeSeriesValues( {} )
-  slot_list_map = calc.evaluate()
-  print( slot_list_map )
+  target_map = caculateCounts( plan, complex_name_list, complex_cost_list, complex_availability_list, complex_reliability_list )
 
-  for blueprint_name in slot_list_map:
-    slot_list = slot_list_map[ blueprint_name ]
-    target_counts = [ 0 ] * len( complex_name_list )
-    for slot in slot_list:
-      target_counts[ int( slot / plan.slots_per_complex ) ] += 1
+  current_map = {}
+  for blueprint_name in target_map.keys():
+    current_map[ blueprint_name ] = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).exclude( state='destroyed' ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
 
-    target_map = dict( ( complex_name_list[ i ], target_counts[ i ] ) for i in range( 0, len( complex_name_list ) ) )
-    print( 'target' )
-    print( target_map )
+  print( 'current' )
+  print( current_map )
+  print( 'target' )
+  print( target_map )
 
-    current_map = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
-    print( 'current' )
-    print( current_map )
+  change_list = caculateChangePlan( plan, complex_name_list, target_map, current_map )
+  print( change_list )
 
-    for name in complex_name_list:
-      diff = current_map.get( name, 0 ) - target_map.get( name, 0 )
-      if diff == 0:
-        pass
+  if not change_list:
+    continue
 
-      elif diff < 0 and plan.can_build:  # TODO: look for allready destroyied ones that can be resued
-        for _ in range( diff, 0 ):
-          instance = Instance.create( plan, name, blueprint_name )
-          Action.create( instance, 'build' )
-          print( 'new instance "{0}"'.format( instance ) )
+  plan.last_change = datetime.now( timezone.utc )
+  plan.full_clean()
+  plan.save()
 
-      elif diff > 0 and plan.can_destroy:
-        # first find anything that hasn't been built, or is building and clean it up
-        unbuilt = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, action__state='new' )
-        for instance in unbuilt[ :diff ]:
-          print( 'delete unused instance "{0}"'.format( instance ) )
-          instance.action.delete()
-          instance.delete()
-          diff -= 1
+  for change in change_list:
+    if change[0] == 'create':
+      _, complex_name, blueprint_name = change
+      instance = Instance.create( plan, complex_name, blueprint_name )
+      Action.create( instance, 'build' )
+      print( 'new instance "{0}"'.format( instance ) )
 
-        if diff > 0:
-          # now to take out what is all ready built
-          built = Instance.objects.filter( plan=plan, blueprint__name=blueprint_name, complex__contractor_id=name, action__isnull=True )
-          for _ in range( 0, diff ):
-            instance = random.choice( built )
-            print( 'unrequesting "{0}"'.format( instance ) )
-            Action.create( instance, 'destroy' )
+    elif change[0] == 'destroy':
+      _, instance = change
+      if instance.state == 'destroyed':
+        print( 'Instance "{0}" allready destroyed, ignorning' )
 
+      else:
+        try:
+          action = instance.action
+        except AttributeError:
+          action = None
 
-# TODO: also move, probably need a move flag
-# TODO: and a move only flag
+        if action is not None:
+          if action.state == {}:
+            print( 'delete unused instance "{0}"'.format( instance ) )
+            instance.action.delete()
+            instance.delete()
+
+          else:
+            print( 'action is still busy, ignoring request to destroy' )
+
+        else:
+          print( 'unrequesting "{0}"'.format( instance ) )
+          Action.create( instance, 'destroy' )
+
+    elif change[0] == 'move':
+      _, instance, complex_name = change
+      print( 'moving "{0}" to "{1}"'.format( instance, complex_name ) )
+      if instance.state == 'destroyed':
+        print( '  Instance "{0}" allready destroyed, ignorning' )
+
+      else:
+        try:
+          action = instance.action
+        except AttributeError:
+          action = None
+
+        if action is not None:
+          if action.state == {}:
+            print( ' delete unused instance "{0}"'.format( instance ) )
+            blueprint_name = instance.blueprint_name
+            instance.action.delete()
+            instance.delete()
+
+            instance = Instance.create( plan, complex_name, blueprint_name )
+            Action.create( instance, 'build' )
+            print( '  new instance "{0}"'.format( instance ) )
+
+          else:
+            print( 'action is still busy, ignoring request to move' )
+
+        else:
+          Action.create( instance, 'move', complex_name )
+
+    else:
+      raise ValueError( 'Unknown change "{0}"'.format( change ) )
