@@ -28,7 +28,7 @@ for blueprint in BluePrint.objects.all():
 print( 'Creating the Plan...' )
 plan = Plan( name='test', description='test', enabled=True )
 plan.script = """
-#generic-manual-structure: not ( *INDEX* % 40 )
+#generic-manual-structure: liner( *INDEX*, 10  )
 """
 plan.config_values = {}
 plan.max_inflight = 4
