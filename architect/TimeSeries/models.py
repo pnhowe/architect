@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from cinp.orm_django import DjangoCInP as CInP
 
 from architect.Contractor.models import Complex
-from architect.TimeSeries.libts import getTS
+from architect.TimeSeries.TimeSeries import getTS
 
 LAST_VALUE_MAX_AGE = 3600  # in seconds
 

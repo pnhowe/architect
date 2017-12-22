@@ -2,23 +2,19 @@
 import json
 from http import client
 
-from django.conf import settings
+from architect.TimeSeries.TimeSeries import TimeSeries
 
 
-def getTSD():
-  return OpenTSD( settings.OPENTSD_HOST, settings.OPENTSD_PORT )
-
-
-class OpenTSD( object ):
-  def __init__( self, opentsd_host, opentsd_port, *args, **kwargs ):
-    super().__init__( *args, **kwargs )
-    self.opentsd_host = opentsd_host
-    self.opentsd_port = opentsd_port
+class OpenTSDTimeSeries( TimeSeries ):
+  def __init__( self, host, port ):
+    super().__init__()
+    self.host = host
+    self.port = port
 
   def getValue( self, metric, start_offset ):
     url = 'http://{0}:{1}/api/query?start={2}m-ago&m=sum:{3}'.format( self.opentsd_host, self.opentsd_port, start_offset, metric )
 
-    conn = client.HTTPConnection( self.opentsd_host, self.opentsd_port )
+    conn = client.HTTPConnection( self.host, self.port )
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:

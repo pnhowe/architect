@@ -3,29 +3,20 @@ import struct
 import socket
 import http
 
-from django.conf import settings
-
-
-def getTS():
-  return GraphiteTimeSeries( settings.GRAPHITE_HOST, settings.GRAPHITE_INJEST_PORT, settings.GRAPHITE_HTTP_PORT )
-
-
-class TimeSeries():
-  def __init__( self ):
-    super().__init__()
+from architect.TimeSeries.TimeSeries import TimeSeries
 
 
 class GraphiteTimeSeries( TimeSeries ):
-  def __init__( self, graphite_host, graphite_injest_port, graphite_http_port, *args, **kwargs ):
-    super().__init__( *args, **kwargs )
-    self.graphite_host = graphite_host
-    self.graphite_injest_port = graphite_injest_port
-    self.graphite_http_port = graphite_http_port
+  def __init__( self, host, injest_port, http_port ):
+    super().__init__()
+    self.host = host
+    self.injest_port = injest_port
+    self.http_port = http_port
 
   def put( self, data ):
     payload = pickle.dumps( data, protocol=2 )
     soc = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-    soc.connect( ( self.graphite_host, self.graphite_injest_port ) )
+    soc.connect( ( self.host, self.injest_port ) )
     soc.send( struct.pack( '!L', len( payload ) ) + payload )
     soc.close()
 
@@ -42,13 +33,13 @@ class GraphiteTimeSeries( TimeSeries ):
       targets = metric
 
     if with_host:
-      return 'http://{0}:{1}/render?from={2}&until={3}&target={4}'.format( self.graphite_host, self.graphite_http_port, start, end, targets )
+      return 'http://{0}:{1}/render?from={2}&until={3}&target={4}'.format( self.host, self.http_port, start, end, targets )
     else:
       return '/render?from={0}&until={1}&target={2}'.format( start, end, targets )
 
   def get( self, metric, start_offset, end_offset ):
     url = self._baseHTTPUrl( metric, start_offset, end_offset, False ) + '&format=pickle'
-    conn = http.client.HTTPConnection( self.graphite_host, self.graphite_http_port )
+    conn = http.client.HTTPConnection( self.host, self.http_port )
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:
@@ -67,28 +58,13 @@ class GraphiteTimeSeries( TimeSeries ):
 
     return result
 
-  def get_last( self, metric, max_age ):
-    if not isinstance( metric, str ):
-      raise ValueError( 'get_last only supports getting one metric' )  # TODO: add support for doing a list at some point
-    data = self.get( metric, max_age, None )
-    if data is None:
-      return None
-
-    try:
-      while data[-1] is None:
-        data.pop()
-    except IndexError:
-      return None
-
-    return data[-1]
-
-  def graph( self, metric, start_offset, end_offset, height, width ):
-    return self._baseHTTPUrl( metric, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
+  def cleanUp( self, name ):
+    pass
 
   # old stuff
 
-  def cleanUp( self, name ):
-    pass
+  def graph( self, metric, start_offset, end_offset, height, width ):
+    return self._baseHTTPUrl( metric, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
 
   def putCheckpoint( self, name, timestamp, value, normalized, target, max_, min_, deadband_high, deadband_low ):
     data = []
@@ -114,11 +90,11 @@ class GraphiteTimeSeries( TimeSeries ):
       end = 'now'
     else:
       end = '-{0}min'.format( end_offset )
-    return 'http://{0}:{1}/render?from={2}&until={3}&width={4}&height={5}&target=secondYAxis({6}.{{cur,norm}})&target={6}.{{calc,tar}}&target=color({6}.{{db_low,db_high}},"ffaaaa")&target=color({6}.{{max,min}},"aaaaff")'.format( self.graphite_host, self.graphite_http_port, start, end, width, height, name )
+    return 'http://{0}:{1}/render?from={2}&until={3}&width={4}&height={5}&target=secondYAxis({6}.{{cur,norm}})&target={6}.{{calc,tar}}&target=color({6}.{{db_low,db_high}},"ffaaaa")&target=color({6}.{{max,min}},"aaaaff")'.format( self.host, self.http_port, start, end, width, height, name )
 
   def getCurState( self, name, timespan ):  # timespan in seconds
     url = '/render?target=keepLastValue({0}.cur)&target=keepLastValue({0}.norm)&target=keepLastValue({0}.calc)&target=keepLastValue({0}.db_high)&target=keepLastValue({0}.db_low)&from=-{1}sec&format=pickle'.format( name, ( timespan * 8 ) )
-    conn = http.client.HTTPConnection( self.graphite_host, self.graphite_http_port )
+    conn = http.client.HTTPConnection( self.host, self.http_port )
     conn.request( 'GET', url )
     resp = conn.getresponse()
     if resp.status != 200:

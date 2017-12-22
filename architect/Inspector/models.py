@@ -5,7 +5,7 @@ from cinp.orm_django import DjangoCInP as CInP
 from architect.Builder.models import Instance
 from architect.fields import JSONField
 
-from architect.TimeSeries.libts import getTS
+from architect.TimeSeries.TimeSeries import getTS
 
 
 cinp = CInP( 'Inspector', '0.1' )

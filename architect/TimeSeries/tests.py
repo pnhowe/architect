@@ -1,13 +1,13 @@
-from django.test import TestCase
-
 import time
 
-from architect.lib.libts import GraphiteTimeSeries
+from architect.lib.TimeSeries import getTS
+
 
 def test_basicPutGet():
-  ts = time.time()
-  gts = GraphiteTimeSeries( 'localhost', 2004, 80 )
-  gts.putSample( 'test', ts, 5 )
-  gts.putSample( 'test', ts + 1, 6 )
-  gts.putSample( 'test', ts + 2, 7 )
-  gts.getEntry( 'test', ts )
+  ts = getTS()
+
+  timestamp = time.time()
+
+  ts_list = []
+  ts_list.append( ( 'complex.test.cost' ( timestamp, 4 ) ) )
+  ts.put( ts_list )
