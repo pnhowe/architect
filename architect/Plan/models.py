@@ -82,7 +82,7 @@ class Plan( models.Model ):
     return 'Plan "{0}"'.format( self.name )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE' ] )
 class PlanComplex( models.Model ):
   plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
@@ -91,6 +91,18 @@ class PlanComplex( models.Model ):
   reliability = models.ForeignKey( ReliabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
+
+  @cinp.action( return_type={ 'type': 'Map' } )
+  def graph_data( self ):
+    result = { 'graph': {}, 'value': {} }
+    result[ 'graph' ][ 'cost' ] = self.cost.graph_data
+    result[ 'graph' ][ 'availability' ] = self.availability.graph_data
+    result[ 'graph' ][ 'reliability' ] = self.reliability.graph_data
+    result[ 'value' ][ 'cost' ] = self.cost.last_value
+    result[ 'value' ][ 'availability' ] = self.availability.last_value
+    result[ 'value' ][ 'reliability' ] = self.reliability.last_value
+
+    return result
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )

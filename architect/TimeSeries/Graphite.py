@@ -20,25 +20,22 @@ class GraphiteTimeSeries( TimeSeries ):
     soc.send( struct.pack( '!L', len( payload ) ) + payload )
     soc.close()
 
-  def _baseHTTPUrl( self, metric, start_offset, end_offset, with_host=True ):
+  def _baseHTTPUrl( self, metric, start_offset, end_offset ):
     start = '-{0}s'.format( start_offset )
     if end_offset is None:
-      end = 'now'
+      end = ''
     else:
-      end = '-{0}s'.format( end_offset )
+      end = '&until=-{0}s'.format( end_offset )
 
     if isinstance( metric, list ):
       targets = '&target='.join( metric )
     else:
       targets = metric
 
-    if with_host:
-      return 'http://{0}:{1}/render?from={2}&until={3}&target={4}'.format( self.host, self.http_port, start, end, targets )
-    else:
-      return '/render?from={0}&until={1}&target={2}'.format( start, end, targets )
+    return '/render?from={0}{1}&target={2}'.format( start, end, targets )
 
   def get( self, metric, start_offset, end_offset ):
-    url = self._baseHTTPUrl( metric, start_offset, end_offset, False ) + '&format=pickle'
+    url = self._baseHTTPUrl( metric, start_offset, end_offset ) + '&format=pickle'
     conn = http.client.HTTPConnection( self.host, self.http_port )
     conn.request( 'GET', url )
     resp = conn.getresponse()
@@ -62,9 +59,6 @@ class GraphiteTimeSeries( TimeSeries ):
     pass
 
   # old stuff
-
-  def graph( self, metric, start_offset, end_offset, height, width ):
-    return self._baseHTTPUrl( metric, start_offset, end_offset, True ) + '&width={4}&height={5}'.format( width, height )
 
   def putCheckpoint( self, name, timestamp, value, normalized, target, max_, min_, deadband_high, deadband_low ):
     data = []

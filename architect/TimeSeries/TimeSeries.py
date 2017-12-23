@@ -40,9 +40,9 @@ class TimeSeries():
       return None
 
     try:
-      while data[-1] is None:
+      while data[ -1 ] is None:
         data.pop()
     except IndexError:
       return None
 
-    return data[-1]
+    return data[ -1 ]

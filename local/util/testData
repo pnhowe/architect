@@ -12,6 +12,26 @@ from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS
 
+import sys
+try:
+  mode = sys.argv[1]
+except IndexError:
+  mode = None
+
+if mode == 'docker':
+  for contractor_id in [ 'cplx01', 'cplx02', 'cplx03', 'cplx04', 'cplx05' ]:
+    print( 'Adding "{0}"...'.format( contractor_id ) )
+    complex = Complex( contractor_id=contractor_id, site_id='demo' )
+    complex.full_clean()
+    complex.save()
+
+  for contractor_id in [ 'generic-manual-structure' ]:
+    print( 'Adding "{0}"...'.format( contractor_id ) )
+    blueprint = BluePrint( contractor_id=contractor_id )
+    blueprint.full_clean()
+    blueprint.save()
+
+
 print( 'Giving Complexes their tsnames...')
 for complex in Complex.objects.all():
   if complex.contractor_id.startswith( 'cplx' ):

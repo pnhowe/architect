@@ -7,30 +7,37 @@ os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
 import time
+import random
+
 from architect.TimeSeries.TimeSeries import getTS
 
 complexes = {
-              'nuc1': {
+              'cplx01': {
+                         'cost': 2,
+                         'availability': 0.95 + ( ( random.random() - 0.5 ) * 0.05 ),
+                         'reliability': 0.90 + ( ( random.random() - 0.5 ) * 0.05 )
+                      },
+              'cplx02': {
+                         'cost': 1,
+                         'availability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 ),
+                         'reliability': 0.80 + ( ( random.random() - 0.5 ) * 0.01 )
+                      },
+              'cplx03': {
+                         'cost': 5,
+                         'availability': 0.80 + ( ( random.random() - 0.5 ) * 0.02 ),
+                         'reliability': 0.95 + ( ( random.random() - 0.5 ) * 0.02 )
+                      },
+              'cplx04': {
                          'cost': 10,
-                         'availability': 0.70,
-                         'reliability': 0.999
+                         'availability': 0.50 + ( ( random.random() - 0.5 ) * 0.04 ),
+                         'reliability': 0.98 + ( ( random.random() - 0.5 ) * 0.04 )
                       },
-              'nuc2': {
-                         'cost': 12,
-                         'availability': 0.80,
-                         'reliability': 0.95
-                      },
-              'xps15': {
-                         'cost': 20,
-                         'availability': 0.50,
-                         'reliability': 0.80
+              'cplx05': {
+                         'cost': 2,
+                         'availability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 ),
+                         'reliability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 )
                       },
 
-              'cplx2': {
-                         'cost': 5,
-                         'availability': 0.90,
-                         'reliability': 0.92
-                      },
             }
 
 
@@ -53,3 +60,5 @@ for key, value in data.items():
   ts_list.append( ( 'data.{0}'.format( key ), ( timestamp, value ) ) )
 
 ts.put( ts_list )
+
+print( timestamp )

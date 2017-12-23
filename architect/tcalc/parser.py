@@ -1,7 +1,7 @@
 import string
 
 # for now we are going to barrow parsimonious from contractor
-from contractor.tscript.parsimonious import Grammar, ParseError, IncompleteParseError
+from architect.tcalc.parsimonious import Grammar, ParseError, IncompleteParseError
 
 
 # TODO: make sure a distrubution function is used
@@ -65,6 +65,7 @@ function_map = {
                   'below': '{0} < {1}',
                   'above_inclusive': '{0} >= {1}',
                   'below_inclusive': '{0} <= {1}',
+                  'filter': '{0} and {1}',
 
                   # other
                   'mult': '{0} * {1}'  # primary for testing, if there is another siimple function added later, use that instead of this

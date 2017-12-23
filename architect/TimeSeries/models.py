@@ -11,6 +11,8 @@ from architect.TimeSeries.TimeSeries import getTS
 LAST_VALUE_MAX_AGE = 3600  # in seconds
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
+GRAPH_DATA_DURATION = 7200  # in seconds
+
 metric_regex = re.compile( '^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$' )
 member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$' )
 
@@ -22,10 +24,12 @@ class TimeSeries( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
+  # Do not expose graph_data to cinp as a property, this saves on some extra work when the data is not needed
   @property
-  def graph_url( self, start_offset, end_offset, height, width ):
-    return ''
+  def graph_data( self ):
+    return []
 
+  # Do not expose graph_data to cinp as a property, this saves on some extra work when the data is not needed
   @property
   def last_value( self ):
     return None
@@ -44,8 +48,8 @@ class RawTimeSeries( TimeSeries ):
   metric = models.CharField( max_length=200 )
 
   @property
-  def graph_url( self, start_offset, end_offset, height, width ):
-    return getTS().graph( self.metric, start_offset, end_offset, height, width )
+  def graph_data( self ):
+    return getTS().get( self.metric, GRAPH_DATA_DURATION, None )
 
   @property
   def last_value( self ):
@@ -74,8 +78,8 @@ class CostTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
-  def graph_url( self, start_offset, end_offset, height, width ):
-    return getTS().graph( 'complex.{0}.cost'.format( self.complex.tsname ), start_offset, end_offset, height, width )
+  def graph_data( self ):
+    return getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
 
   @property
   def last_value( self ):
@@ -104,12 +108,21 @@ class AvailabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
-  def graph_url( self, start_offset, end_offset, height, width ):
-    return getTS().graph( 'complex.{0}.availability'.format( self.complex.tsname ), start_offset, end_offset, height, width )
+  def graph_data( self ):
+    return getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
 
   @property
   def last_value( self ):
     return getTS().get_last( 'complex.{0}.availability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    errors = {}
+    if self.complex.tsname is None:
+      errors[ 'complex' ] = 'can not use a complex without a tsname set.'
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
@@ -125,12 +138,21 @@ class ReliabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   @property
-  def graph_url( self, start_offset, end_offset, height, width ):
-    return getTS().graph( 'complex.{0}.reliability'.format( self.complex.tsname ), start_offset, end_offset, height, width )
+  def graph_data( self ):
+    return getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
 
   @property
   def last_value( self ):
     return getTS().get_last( 'complex.{0}.reliability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    errors = {}
+    if self.complex.tsname is None:
+      errors[ 'complex' ] = 'can not use a complex without a tsname set.'
+
+    if errors:
+      raise ValidationError( errors )
 
   @cinp.check_auth()
   @staticmethod
@@ -144,6 +166,8 @@ class ReliabilityTS( TimeSeries ):
 @cinp.model( property_list=[ 'uid' ], not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Controller( models.Model ):  # this fields should match the default member in lib.py
   """
+NOTE: This has yet to be updated with the new philosphy, can be ignored for now
+
 min/max_instance -> control the limits
 query -> query to get from data source
 lockout_query -> if this query returns != 0, no adjustment  is allowed

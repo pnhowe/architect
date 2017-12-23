@@ -35,9 +35,15 @@ Distrubution functions
 periodic( index, period ):
   Item every `period` slots
 
-liner( index, count ):
+linear( index, count ):
   Evenly space `count` items
 
+weighted( index, count, weight )
+
+Subset functions
+----------------
+
+above, below, above_inclusive, below_inclusive, filter
 
 
 Examples
@@ -68,3 +74,7 @@ Same thing can be acomplished with::
   items: liner( *INDEX*, 10 )
   #version1: above_inclusive( liner, 30 )
   #version2: below( liner, 30 )
+
+Item every 40 slots, excepet where cost is more than 10::
+
+  #generic-manual-structure: filter( periodic( *INDEX*, 40 ), ( *COST* < 10 ) )
