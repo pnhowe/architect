@@ -2,64 +2,99 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.db.models.deletion
 import architect.fields
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('Contractor', '0001_initial'),
+        ('TimeSeries', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Member',
+            name='Plan',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50)),
-                ('hostname_pattern', models.CharField(default='{blueprint}-{id:06}', max_length=100, editable=False)),
-                ('blueprint', models.CharField(max_length=50)),
-                ('build_priority', models.IntegerField(default=100)),
-                ('auto_build', models.BooleanField(default=False)),
-                ('complex', models.CharField(max_length=50)),
-                ('config_values', architect.fields.JSONField(default={})),
-                ('scaler_type', models.CharField(default='none', max_length=5, choices=[('none', 'None'), ('step', 'Step'), ('liner', 'Liner')])),
-                ('min_instances', models.IntegerField(null=True, blank=True)),
-                ('max_instances', models.IntegerField(null=True, blank=True)),
-                ('build_ahead', models.IntegerField(default=0)),
-                ('regenerate_rate', models.IntegerField(default=1)),
-                ('tsd_metric', models.CharField(max_length=200, null=True, blank=True)),
-                ('lockout_query', models.CharField(max_length=200, null=True, blank=True)),
-                ('p_value', models.FloatField(null=True, blank=True)),
-                ('a_value', models.FloatField(null=True, blank=True)),
-                ('b_value', models.FloatField(null=True, blank=True)),
-                ('step_threshold', models.FloatField(null=True, blank=True)),
-                ('deadband_margin', models.IntegerField(null=True, blank=True)),
-                ('cooldown_seconds', models.IntegerField(default=60)),
-                ('can_grow', models.BooleanField(default=False)),
-                ('can_shrink', models.BooleanField(default=False)),
-                ('member_affinity', models.IntegerField(null=True, blank=True)),
+                ('name', models.CharField(max_length=50, serialize=False, primary_key=True)),
+                ('description', models.CharField(max_length=200)),
+                ('enabled', models.BooleanField(default=False)),
+                ('hostname_pattern', models.CharField(max_length=100, default='{plan}-{nonce}')),
+                ('config_values', architect.fields.MapField(default={}, blank=True)),
+                ('script', models.TextField()),
+                ('static_values', models.TextField(null=True, blank=True)),
+                ('slots_per_complex', models.IntegerField(default=100)),
+                ('change_cooldown', models.IntegerField(default=300)),
+                ('max_inflight', models.IntegerField(default=2)),
+                ('last_change', models.DateTimeField()),
+                ('nonce_counter', models.IntegerField(default=1)),
+                ('can_move', models.BooleanField(default=False)),
+                ('can_destroy', models.BooleanField(default=False)),
+                ('can_build', models.BooleanField(default=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Site',
+            name='PlanBluePrint',
             fields=[
-                ('name', models.CharField(max_length=20, primary_key=True, serialize=False)),
-                ('description', models.CharField(max_length=200)),
-                ('config_values', architect.fields.JSONField(default={})),
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('parent', models.ForeignKey(blank=True, null=True, to='Plan.Site')),
+                ('blueprint', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.BluePrint')),
+                ('plan', models.ForeignKey(to='Plan.Plan')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='PlanComplex',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+                ('availability', models.ForeignKey(related_name='+', to='TimeSeries.AvailabilityTS', on_delete=django.db.models.deletion.PROTECT)),
+                ('complex', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.Complex')),
+                ('cost', models.ForeignKey(related_name='+', to='TimeSeries.CostTS', on_delete=django.db.models.deletion.PROTECT)),
+                ('plan', models.ForeignKey(to='Plan.Plan')),
+                ('reliability', models.ForeignKey(related_name='+', to='TimeSeries.ReliabilityTS', on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='PlanTimeSeries',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
+                ('script_name', models.CharField(max_length=50)),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+                ('plan', models.ForeignKey(to='Plan.Plan')),
+                ('timeseries', models.ForeignKey(related_name='+', to='TimeSeries.RawTimeSeries', on_delete=django.db.models.deletion.PROTECT)),
             ],
         ),
         migrations.AddField(
-            model_name='member',
-            name='site',
-            field=models.ForeignKey(to='Plan.Site', editable=False),
+            model_name='plan',
+            name='blueprint_list',
+            field=models.ManyToManyField(through='Plan.PlanBluePrint', to='Contractor.BluePrint'),
+        ),
+        migrations.AddField(
+            model_name='plan',
+            name='complex_list',
+            field=models.ManyToManyField(through='Plan.PlanComplex', to='Contractor.Complex'),
+        ),
+        migrations.AddField(
+            model_name='plan',
+            name='timeseries_list',
+            field=models.ManyToManyField(through='Plan.PlanTimeSeries', to='TimeSeries.RawTimeSeries'),
         ),
         migrations.AlterUniqueTogether(
-            name='member',
-            unique_together=set([('site', 'name')]),
+            name='plantimeseries',
+            unique_together=set([('plan', 'timeseries')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='plancomplex',
+            unique_together=set([('plan', 'complex')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='planblueprint',
+            unique_together=set([('plan', 'blueprint')]),
         ),
     ]

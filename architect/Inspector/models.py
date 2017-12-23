@@ -1,12 +1,19 @@
 from django.db import models
 
-from architect.Plan.models import Member
+from cinp.orm_django import DjangoCInP as CInP
+
+from architect.Builder.models import Instance
 from architect.fields import JSONField
 
-from architect.Inspector.libts import getTS
+from architect.TimeSeries.TimeSeries import getTS
 
+
+cinp = CInP( 'Inspector', '0.1' )
+
+
+@cinp.model( property_list=[ 'target_range', 'graph_url', 'building', 'destroying' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Inspection( models.Model ):
-  member = models.OneToOneField( Member, primary_key=True, on_delete=models.CASCADE )
+  instance = models.OneToOneField( Instance, primary_key=True, on_delete=models.CASCADE )
   state = JSONField()
   target_count = models.IntegerField( default=0 )
   next_check = models.DateTimeField()
@@ -23,7 +30,7 @@ class Inspection( models.Model ):
   @property
   def graph_url( self ):
     ts = getTS()
-    return ts.getGraph( self.member.uid, "30", "0", 400, 800 )
+    return ts.getGraph( self.member.uid, '30', '0', 400, 800 )
 
   @property
   def building( self ):
@@ -45,8 +52,13 @@ class Inspection( models.Model ):
     ts.putProvisionedState( self.member.uid, timestamp, active, provisioning, deprovisioining )
 
   def delete( self, *args, **kwargs ):
-    getTS.cleanup( self.member.uid )
+    getTS().cleanup( self.member.uid )
     super().delete( *args, **kwargs )
 
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, method, id_list, action=None ):
+    return True
+
   def __str__( self ):
-    return 'State for "{0}"'.format( self.member )
+    return 'Inspection for "{0}"'.format( self.member )

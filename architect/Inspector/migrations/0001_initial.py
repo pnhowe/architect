@@ -8,15 +8,15 @@ import architect.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Plan', '0001_initial'),
+        ('Builder', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
             name='Inspection',
             fields=[
-                ('member', models.OneToOneField(serialize=False, to='Plan.Member', primary_key=True)),
-                ('state', architect.fields.JSONField(default={})),
+                ('instance', models.OneToOneField(to='Builder.Instance', primary_key=True, serialize=False)),
+                ('state', architect.fields.JSONField()),
                 ('target_count', models.IntegerField(default=0)),
                 ('next_check', models.DateTimeField()),
                 ('updated', models.DateTimeField(auto_now=True)),

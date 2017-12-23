@@ -6,42 +6,33 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-from django.utils import timezone
+import logging
 
-from architect.Inspector.models import Inspection
-from architect.Builder.models import Instance, Job
+from architect.Plan.models import Plan
+from architect.Builder.models import Action, Job
 
-for inspection in Inspection.objects.all():
-  if Job.objects.filter( instance__in=inspection.member.instance_set.all() ).count() != 0:
-    print( '{0} busy, skipping...'.format( inspection.member ) )
+logging.basicConfig( level=logging.DEBUG )
+
+print( 'Checking Plans...' )
+for plan in Plan.objects.all():
+  print( 'Checking plan "{0}"...'.format( plan ) )
+
+  actions_needed = plan.max_inflight - Action.objects.filter( instance__plan=plan ).exclude( state={} ).count()
+
+  if actions_needed <= 0:
     continue
 
-  curent_count = inspection.member.instance_set.all().count()
-  ( deadband_low, deadband_high ) = inspection.target_range
-  if deadband_low is None or deadband_high is None:
-    continue
+  for action in Action.objects.filter( instance__plan=plan, state={} )[ :actions_needed ]:
+    action.start()
 
-  print( 'for {0} want {1}-{2} have {3}'.format( inspection.member, deadband_low, deadband_high, inspection.member.instance_set.all().count() ) )
-  if curent_count < deadband_low:
-    for i in range( 0, inspection.target_count - curent_count ):
-      offset_list = set( Instance.objects.filter( member=inspection.member ).values_list( 'offset', flat=True ) )
-      if offset_list == set([]):
-        offset = 1
-      else:
-        offset = list( ( set( range( 1, max( offset_list ) + 2 ) ) - offset_list ) )
-        offset.sort()
-        offset = offset[0]
+print( 'Running Jobs...' )
+for job in Job.objects.filter( state__in=( 'new', 'done' ) ):
+  print( 'Running job"{0}"...'.format( job ) )
+  job.run()
 
-      print( 'Adding offfset {0} of "{1}"'.format( offset, inspection.member ) )
-      structure_id = offset + ( inspection.member.pk * 1000 )
-      instance = Instance()
-      instance.member = inspection.member
-      instance.hostname = inspection.member.hostname_pattern.format( offset=offset, id=structure_id, blueprint=inspection.member.blueprint, site=inspection.member.site )
-      instance.requested_at = timezone.now()
-      instance.structure_id = structure_id
-      instance.offset = offset
-      instance.clean()
-      instance.save()
+print( 'Running Actions...' )
+for action in Action.objects.exclude( state={} ):
+  print( 'Running action "{0}"...'.format( action ) )
+  action.run()
 
-  elif curent_count > deadband_high:
-    pass # do the delete thing
+print( 'Done.' )

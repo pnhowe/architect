@@ -8,7 +8,7 @@ django.setup()
 
 import time
 
-from django.utils import timezone
+from datetime import datetime, timezone
 
 from architect.Plan.models import Member
 from architect.Builder.models import Instance
@@ -21,7 +21,7 @@ for member in Member.objects.filter( inspection=None ):
   print( 'Creating Inspection Record for "{0}"'.format( member ) )
   inspection = Inspection()
   inspection.member = member
-  inspection.next_check = timezone.now()
+  inspection.next_check = datetime.now( timezone.utc )
   inspection.clean()
   inspection.save()
 
