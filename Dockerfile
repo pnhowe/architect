@@ -1,7 +1,15 @@
-FROM alpine:3.6
-EXPOSE 8880
-RUN apk add --no-cache python3 && pip3 install django==1.8.18 werkzeug gunicorn python-dateutil cinp
-COPY architect /usr/lib/python3.6/site-packages/architect
+FROM phusion/baseimage:0.9.18
+
+RUN apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get -y --force-yes install python3 python3-pip && \
+    pip3 install --upgrade six && \
+    pip3 install django==1.8.18 werkzeug gunicorn python-dateutil cinp
+
+COPY architect /usr/lib/python3/dist-packages/architect
 COPY local /usr/local/architect
-RUN mkdir -p /opt/architect && /usr/local/architect/util/manage.py migrate && /usr/local/architect/util/testData docker && /usr/local/architect/cron/planEvaluate
-CMD /usr/local/architect/api_server/api_server.py
+COPY docker/etc/ /etc/
+
+EXPOSE 8880
+
+CMD [ "/sbin/my_init" ]
