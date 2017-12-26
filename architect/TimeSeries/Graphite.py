@@ -28,11 +28,11 @@ class GraphiteTimeSeries( TimeSeries ):
       end = '&until=-{0}s'.format( end_offset )
 
     if isinstance( metric, list ):
-      targets = '&target='.join( metric )
+      targets = ',\'30s\')&target=movingAverage('.join( metric )
     else:
       targets = metric
 
-    return '/render?from={0}{1}&target={2}'.format( start, end, targets )
+    return '/render?from={0}{1}&target=movingAverage({2},\'30s\')'.format( start, end, targets )
 
   def get( self, metric, start_offset, end_offset ):
     url = self._baseHTTPUrl( metric, start_offset, end_offset ) + '&format=pickle'

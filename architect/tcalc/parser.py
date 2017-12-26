@@ -10,7 +10,7 @@ tcalc_grammar = """
 script              = line*
 line                = definition? nl
 definition          = ws ( blueprint / variable ) ws ":" expression
-expression          = ws ( function / infix / boolean / not_ / external / ts_value / variable / number_float / number_int ) ws
+expression          = ws ( function / infix / boolean / not_ / external / ts_value / blueprint / variable / number_float / number_int ) ws
 
 not_                = ~"[Nn]ot" expression
 
@@ -30,6 +30,11 @@ blueprint           = ~"#[a-zA-Z0-9][a-zA-Z0-9_\-]*"
 ws                  = ~"[ \t]*"
 nl                  = ~"[\\r\\n]*"
 """
+
+external_lookup = {
+                    'init': { '*TOTAL*': ( '_T_', False ), '*COST*': ( '_C_', True ), '*AVAILABILITY*': ( '_A_', True ), '*RELIABILITY*': ( '_R_', True ) },  # there is not *INDEX* for the init function
+                    'main': { '*INDEX*': ( '_I_', False ), '*TOTAL*': ( '_T_', False ), '*COST*': ( '_C_', False ), '*AVAILABILITY*': ( '_A_', False ), '*RELIABILITY*': ( '_R_', False ) },
+                  }
 
 
 class ParserError( Exception ):
@@ -55,20 +60,17 @@ def parse( script ):
 # functions is correctly detected
 function_map = {
                   # distrubution
-                  'periodic': 'not bool( {0} % {1} )',
+                  'periodic': '( {0} ) if not bool( {0} % {1} ) else False',
                   # 'linear': 'bool( {0} == math.ceil( math.floor( ( {0} * ( {1} / _T_ ) ) + 0.00000000001 ) * ( _T_ / {1} ) ) )',
-                  'linear': '{0} in linear_slots_{ID}',
-                  'weighted': '{0} in weighted_slots_{ID}',
+                  'linear': '( {0} ) if ( {0} ) in linear_slots_{ID} else False',
+                  'weighted': '( {0} ) if ( {0} ) in weighted_slots_{ID} else False',
 
                   # subsetting
-                  'above': '{0} > {1}',
-                  'below': '{0} < {1}',
-                  'above_inclusive': '{0} >= {1}',
-                  'below_inclusive': '{0} <= {1}',
-                  'filter': '{0} and {1}',
-
-                  # other
-                  'mult': '{0} * {1}'  # primary for testing, if there is another siimple function added later, use that instead of this
+                  'above': '( {0} ) if ( {0} ) > ( {1} ) and {0} is not False and {1} is not False else False',
+                  'below': '( {0} ) if ( {0} ) < ( {1} ) and {0} is not False and {1} is not False else False',
+                  'above_inclusive': '( {0} ) if ( {0} ) >= ( {1} ) and {0} is not False and {1} is not False else False',
+                  'below_inclusive': '( {0} ) if ( {0} ) <= ( {1} ) and {0} is not False and {1} is not False else False',
+                  'filter': '( {0} ) if ( {1} ) else False',
                 }
 
 function_init_map = {
@@ -84,7 +86,6 @@ function_init_map = {
                       'weighted': """
   import math
   global weighted_slots_{ID}
-  print( _T_, SLOTS_PER_BUCKET )
 
   avg_weight = float( sum( {2} ) ) / len( {2} )
   counter = 0
@@ -97,7 +98,6 @@ function_init_map = {
     except ZeroDivisionError:
       interval = SLOTS_PER_BUCKET
 
-    print( bucket, interval, counter )
     if interval < 1:
       raise ValueError( 'interval drops below 1' )
 
@@ -173,7 +173,7 @@ class Script():
     except KeyError as e:
       raise ValueError( 'value "{0}" not defined'.format( e.args[0] ) )
 
-    return dict( zip( value_map.keys(), [ i > 0 for i in value_map.values() ] ) )
+    return dict( zip( value_map.keys(), [ i >= 0 and i is not False and i is not None for i in value_map.values() ] ) )  # yes this is a bit odd, however '0' is a valid bucket/offset
 
   def evaluate( self ):
     if self.slots_per_bucket is None:
@@ -183,8 +183,7 @@ class Script():
 
     self.code[ '__builtins__' ][ 'SLOTS_PER_BUCKET' ] = self.slots_per_bucket
 
-    if 'init' in self.code:
-      self.code[ 'init' ]( self.total_slots, self.bucket_cost, self.bucket_availability, self.bucket_reliability, self.ts_value_map )
+    self.code[ 'init' ]( self.total_slots, self.bucket_cost, self.bucket_availability, self.bucket_reliability, self.ts_value_map )
 
     result_name_list = self._evaluate( 0, 0 ).keys()
     result = dict( zip( result_name_list, [ [] for i in result_name_list ] ) )
@@ -206,10 +205,12 @@ class Parser():
   def __init__( self ):
     super().__init__()
     self.grammar = Grammar( tcalc_grammar )
-    self.function_initers = []
+    self.function_initer_list = []
+    self.mode = 'main'
 
   def lint( self, script ):
-    self.function_initers = []
+    self.function_initer_list = []
+    self.mode = 'main'
     try:
       ast = self.grammar.parse( script )
     except IncompleteParseError as e:
@@ -225,7 +226,8 @@ class Parser():
     return None
 
   def parse( self, script ):
-    self.function_initers = []
+    self.function_initer_list = []
+    self.mode = 'main'
     try:
       ast = self.grammar.parse( script )
     except IncompleteParseError as e:
@@ -237,10 +239,12 @@ class Parser():
 
     body = self._eval( ast )
 
-    if self.function_initers:
-      init = 'def init( _T_, _C_, _A_, _R_, ts_map ):\n'
-      for name, init_id, paramaters in self.function_initers:
+    init = 'def init( _T_, _C_, _A_, _R_, ts_map ):\n'
+    if self.function_initer_list:
+      for name, init_id, paramaters in self.function_initer_list:
         init += function_init_map[ name ].format( *paramaters, ID=init_id )
+    else:
+      init += '  pass'
 
     script = init + """
 
@@ -287,8 +291,11 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
 
     return self._eval( node.children[0] )
 
-  def definition( self, node ):  # ws variable ws ":" expression nl
-    return '  {0} = {1}'.format( self._eval( node.children[1] ), self._eval( node.children[4] ) )
+  def definition( self, node ):
+    target = self._eval( node.children[1] )
+    value = self._eval( node.children[4] )
+
+    return '  {0} = {1}'.format( target, value )
 
   def expression( self, node ):
     return self._eval( node.children[1] )
@@ -305,7 +312,15 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
   def external( self, node ):
     name = node.text
 
-    return '_{0}_'.format( name[1] )
+    try:
+      lookup = external_lookup[ self.mode ][ name ]
+    except KeyError:
+      raise ValueError( 'External "{0}" not allowed here'.format( name ) )
+
+    if lookup[1]:
+      return '[ {0} ]'.format( lookup[0] )
+    else:
+      return lookup[0]
 
   def ts_value( self, node ):
     name = node.text
@@ -315,6 +330,9 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
   def variable( self, node ):
     name = node.text
 
+    if self.mode == 'init':
+      raise ValueError( 'Unable to refrence values in init' )
+
     return 'v_map[ \'{0}\' ]'.format( name )
 
   def blueprint( self, node ):
@@ -323,34 +341,72 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
     return 'b_map[ \'{0}\' ]'.format( name[ 1: ] )
 
   def infix( self, node ):
-    return '( {0} {1} {2} )'.format( self._eval( node.children[1] ), node.children[2].text, self._eval( node.children[3] ) )
+    left = self._eval( node.children[1] )
+    right = self._eval( node.children[3] )
+    left_list = False
+    right_list = False
+    if left[0] == '[':
+      left_list = True
+      left = left[ 1:-1 ]
+
+    if right[0] == '[':
+      right_list = True
+      right = right[ 1:-1 ]
+
+    value = '( {0} {1} {2} )'
+    if left_list and right_list:
+      value = '[ {0}[ i ] {1} {2}[ i ] for i in range( 0, len( {0} ) ) ]'  # hopfully both lists have the same length
+    elif left_list:
+      value = '[ i {1} {2} for i in {0} ]'
+    elif right_list:
+      value = '[ {0} {1} i for i in {2} ]'
+
+    return value.format( left, node.children[2].text, right )
 
   def not_( self, node ):
     return 'not bool( {0} )'.format( self._eval( node.children[1] ) )
 
   def function( self, node ):
-    param_value_list = []
-    for child in node.children[2]:
-      param_value_list.append( self._eval( child ) )
-    param_value_list.append( self._eval( node.children[3] ) )
     name = node.children[0].text
+
+    param_value_list = []
+    children = list( node.children[2] )
+    children.append( node.children[3] )
+    for child in children:
+      param_value_list.append( self._eval( child ) )
 
     try:
       func_body = function_map[ name ]
     except KeyError:
       raise ValueError( 'Unknown function "{0}"'.format( name ) )
 
-    print( '#### Parms "{0}"'.format( param_value_list ) )
-    print( '**** Function "{0}"'.format( func_body ) )
-
     init_id = None
     if name in function_init_map:
-      init_id = 'id{0}'.format( len( self.function_initers ) )
-      self.function_initers.append( ( name, init_id, param_value_list ) )
+      self.mode = 'init'
 
-    max_paramater = max( [ int( v[1] ) for v in string.Formatter().parse( func_body ) if v[1] is not None and v[1] not in ( 'ID', ) ] ) + 1
+      used_parm_list = _getFormatIds( function_init_map[ name ] )
+
+      init_param_value_list = []
+      for i in range( 0, len( children ) ):
+        if i not in used_parm_list:
+          init_param_value_list.append( None )
+
+        else:
+          child = children[i]
+          value = self._eval( child )
+          if value.startswith( '[ _' ):
+            value = value[ 1:-1 ]
+          init_param_value_list.append( value )
+
+      init_id = 'id{0}'.format( len( self.function_initer_list ) )
+      self.function_initer_list.append( ( name, init_id, init_param_value_list ) )
+      self.mode = 'main'
+
+    max_paramater = max( [0] + _getFormatIds( func_body ) )
     if init_id is not None:
-      max_paramater = max( [ max_paramater ] + [ int( v[1] ) for v in string.Formatter().parse( function_init_map[ name ] ) if v[1] is not None and v[1] not in ( 'ID', ) ] ) + 1
+      max_paramater = max( [ max_paramater ] + _getFormatIds( function_init_map[ name ] ) )
+
+    max_paramater += 1
 
     if len( param_value_list ) != max_paramater:
       raise ValueError( 'Expected {0} paramaters, got {1}'.format( max_paramater, len( param_value_list ) ) )
@@ -359,3 +415,7 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
       return function_map[ name ].format( *param_value_list, ID=init_id )
     else:
       return function_map[ name ].format( *param_value_list )
+
+
+def _getFormatIds( scriptlet ):
+  return [ int( v[1] ) for v in string.Formatter().parse( scriptlet ) if v[1] is not None and v[1] not in ( 'ID', ) ]
