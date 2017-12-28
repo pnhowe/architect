@@ -163,6 +163,7 @@ class ReliabilityTS( TimeSeries ):
     return 'ReliabilityTS for "{0}"'.format( self.complex )
 
 
+# TODO: add a max grow/shrink
 @cinp.model( property_list=[ 'uid' ], not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Controller( models.Model ):  # this fields should match the default member in lib.py
   """

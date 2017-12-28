@@ -11,13 +11,19 @@ from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField, script_name_regex
 from architect.tcalc.parser import lint
 
-
-cinp = CInP( 'Plan', '0.1' )
+cinp = CInP( 'Plan', '0.1', doc="""This is where the Deployment Plans and the
+Models that relate the Plans to BluePrints and TimeSeries data
+""" )
 
 
 @cinp.model( not_allowed_method_list=[ 'CALL' ], read_only_list=[ 'nonce_counter', 'last_change' ] )
 class Plan( models.Model ):
   """
+  Deployment Plan.  We can source multiple data streams and build for multiple
+  BluePrints.  The values exported via the script (ie: the # values), will be matched
+  to the Blueprint by matching the exported name to the BluePrint's name.  TimeSeries
+  data (other than the TimmeSeries data from the Complex's attributes), are imported
+  with the script_name as defined in the PlanTimeSeries model.
   hostname_pattern -> python.format format,
                        {plan} -> plan name (up to 50 chars)
                        {compex} -> complex name (up to 50 chars)
@@ -25,20 +31,23 @@ class Plan( models.Model ):
                        {site} -> site name (up to 40 chars)
                        {nonce} -> nonce (random one-time use string, 26 chars)
     the target hostname is length 200 chars
+
+  slots_per_complex -> NOTE: changing this value can cause a lot of Instances to be
+  created/destroyed/moved.
   """
   name = models.CharField( max_length=50, primary_key=True )
   description = models.CharField( max_length=200 )
   enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
   hostname_pattern = models.CharField( max_length=100, default='{plan}-{nonce}' )
-  config_values = MapField( blank=True )
-  script = models.TextField()  # TODO: on save run lint
+  config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
+  script = models.TextField()
   complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
   blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
   timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
-  static_values = models.TextField( blank=True, null=True )
+  static_values = models.TextField( blank=True, null=True )  # TODO: What was this for?
   slots_per_complex = models.IntegerField( default=100 )
-  change_cooldown = models.IntegerField( default=300 )  # in seconds
-  max_inflight = models.IntegerField( default=2 )  # number of things that can be changing at the same time
+  change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
+  max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
   last_change = models.DateTimeField()
   nonce_counter = models.IntegerField( default=1 )  # is hashed (with other stuff) to be used as the nonc string, https://stackoverflow.com/questions/4567089/hash-function-that-produces-short-hashes
   can_move = models.BooleanField( default=False )
@@ -82,8 +91,11 @@ class Plan( models.Model ):
     return 'Plan "{0}"'.format( self.name )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE' ] )
+@cinp.model( not_allowed_method_list=[] )
 class PlanComplex( models.Model ):
+  """
+  Attaches a Plan to a Complex.
+  """
   plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
   cost = models.ForeignKey( CostTS, related_name='+', on_delete=models.PROTECT )  # 0 -> large value
@@ -104,6 +116,16 @@ class PlanComplex( models.Model ):
 
     return result
 
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @staticmethod
+  def filter_plan( plan ):
+    return PlanComplex.objects.filter( plan=plan )
+
+  @cinp.list_filter( name='complex', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.Complex' } ] )
+  @staticmethod
+  def filter_complex( plan ):
+    return PlanComplex.objects.filter( complex=complex )
+
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
     errors = {}
@@ -122,9 +144,12 @@ class PlanComplex( models.Model ):
     unique_together = ( ( 'plan', 'complex' ), )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_method_list=[ 'CALL' ] )
 class PlanBluePrint( models.Model ):
-  plan = models.ForeignKey( Plan, on_delete=models.CASCADE  )
+  """
+  Attaches a Plan to a BluePrint
+  """
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT  )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -138,6 +163,16 @@ class PlanBluePrint( models.Model ):
     if errors:
       raise ValidationError( errors )
 
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @staticmethod
+  def filter_plan( plan ):
+    return PlanBluePrint.objects.filter( plan=plan )
+
+  @cinp.list_filter( name='blueprint', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.BluePrint' } ] )
+  @staticmethod
+  def filter_blueprint( blueprint ):
+    return PlanBluePrint.objects.filter( blueprint=blueprint )
+
   @cinp.check_auth()
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
@@ -150,10 +185,15 @@ class PlanBluePrint( models.Model ):
     unique_together = ( ( 'plan', 'blueprint' ), )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_method_list=[ 'CALL' ] )
 class PlanTimeSeries( models.Model ):
-  plan = models.ForeignKey( Plan, on_delete=models.CASCADE  )
-  timeseries = models.ForeignKey( RawTimeSeries, related_name='+', on_delete=models.PROTECT   )
+  """
+  Attaches a Plan to a TimeSeries values (this is not the Cost/Availablilty/Reliability)
+  values for a complex.  Can be pretty much any value, will apear in the Plan's
+  Script with as the variable @<script_name>
+  """
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
+  timeseries = models.ForeignKey( RawTimeSeries, related_name='+', on_delete=models.PROTECT )
   script_name = models.CharField( max_length=50 )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -166,6 +206,16 @@ class PlanTimeSeries( models.Model ):
 
     if errors:
       raise ValidationError( errors )
+
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @staticmethod
+  def filter_plan( plan ):
+    return PlanTimeSeries.objects.filter( plan=plan )
+
+  @cinp.list_filter( name='timeseries', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.TimeSeries.models.RawTimeSeries' } ] )
+  @staticmethod
+  def filter_timeseries( timeseries ):
+    return PlanTimeSeries.objects.filter( timeseries=timeseries )
 
   @cinp.check_auth()
   @staticmethod
