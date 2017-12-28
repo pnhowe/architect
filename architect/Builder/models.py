@@ -12,16 +12,28 @@ from architect.Plan.models import Plan
 
 from architect.Contractor.libcontractor import getContractor
 
-cinp = CInP( 'Builder', '0.1' )
+cinp = CInP( 'Builder', '0.1', doc="""This is where the Instances genenerated
+from the plan, as well as the models to support the handeling of the Instances
+are handled.
+""" )
+
+INSTANCE_STATE_CHOICES = ( 'new', 'built', 'destroyed', 'processing' )
+ACTION_ACTION_CHOICES = ( 'build', 'destroy', 'rebuild', 'move' )
+JOB_TARGET_CHOICES = ( 'foundation', 'structure' )
+JOB_TASK_CHOICES = ( 'build', 'destroy', 'move' )
+JOB_STATE_CHOICES = ( 'new', 'waiting', 'done', 'error' )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
+@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], constant_set_map={ 'state': INSTANCE_STATE_CHOICES } )
 class Instance( models.Model ):
-  INSTANCE_STATE_CHOICES = ( ( 'new', 'new' ), ( 'built', 'built' ), ( 'destroyed', 'destroyed' ), ( 'processing', 'processing' ) )
+  """
+  A Deployment Instance, These are created and destroyed when the plan is evaluated.
+  Actions are created to change the state of each Instance.
+  """
   nonce = models.CharField( max_length=26, unique=True )
   plan = models.ForeignKey( Plan, on_delete=models.PROTECT )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )
-  state = models.CharField( max_length=10, choices=INSTANCE_STATE_CHOICES )
+  state = models.CharField( max_length=10, choices=zip( INSTANCE_STATE_CHOICES, INSTANCE_STATE_CHOICES ) )
   blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT )
   hostname = models.CharField( max_length=200, unique=True )
   foundation_id = models.IntegerField( null=True, blank=True, unique=True )  # Contractor foundation id
@@ -55,6 +67,26 @@ class Instance( models.Model ):
     if errors:
       raise ValidationError( errors )
 
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @staticmethod
+  def filter_plan( plan ):
+    return Instance.objects.filter( plan=plan )
+
+  @cinp.list_filter( name='complex', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.Complex' } ] )
+  @staticmethod
+  def filter_complex( complex ):
+    return Instance.objects.filter( complex=complex )
+
+  @cinp.list_filter( name='plan_complex', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' }, { 'type': 'Model', 'model': 'architect.Contractor.models.Complex' } ] )
+  @staticmethod
+  def filter_plan_complex( plan, complex ):
+    return Instance.objects.filter( plan=plan, complex=complex )
+
+  @cinp.list_filter( name='plan_state', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' }, { 'type': 'String', 'choice_list': INSTANCE_STATE_CHOICES } ] )
+  @staticmethod
+  def filter_plan_state( plan, state ):
+    return Instance.objects.filter( plan=plan, state=state )
+
   @cinp.check_auth()
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
@@ -64,11 +96,14 @@ class Instance( models.Model ):
     return 'Instance({0}) "{1}" of "{2}" in "{3}" blueprint "{4}"'.format( self.pk, self.hostname, self.plan.name, self.complex, self.blueprint )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], property_list=( 'progress', ) )
+@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], property_list=( 'progress', ), constant_set_map={ 'action': ACTION_ACTION_CHOICES } )
 class Action( models.Model ):
-  ACTION_ACTION_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'rebuild', 'rebuild' ), ( 'move', 'move' ) )
+  """
+  Actions are in flight action that is building, destroying, rebuilding or moving an
+  Instance.
+  """
   instance = models.OneToOneField( Instance, on_delete=models.PROTECT )
-  action = models.CharField( max_length=10, choices=ACTION_ACTION_CHOICES )
+  action = models.CharField( max_length=10, choices=zip( ACTION_ACTION_CHOICES, ACTION_ACTION_CHOICES ) )
   state = JSONField( default={}, blank=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -165,6 +200,11 @@ class Action( models.Model ):
     self.save()
     job.delete()
 
+  @cinp.list_filter( name='instance', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Builder.models.Instance' } ] )
+  @staticmethod
+  def filter_instance( instance ):
+    return Action.objects.filter( instance=instance )
+
   @cinp.check_auth()
   @staticmethod
   def checkAuth( user, method, id_list, action=None ):
@@ -174,15 +214,17 @@ class Action( models.Model ):
     return 'Action({0}) ""{1}" for "{2}"'.format( self.pk, self.action, self.instance )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE' ], hide_field_list=[ 'web_hook_token' ] )
+@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE' ], hide_field_list=[ 'web_hook_token' ], constant_set_map={ 'target': JOB_TARGET_CHOICES, 'task': JOB_TASK_CHOICES, 'state': JOB_STATE_CHOICES } )
 class Job( models.Model ):
-  JOB_TARGET_CHOICES = ( ( 'foundation', 'foundation' ), ( 'structure', 'structure' ) )
-  JOB_TASK_CHOICES = ( ( 'build', 'build' ), ( 'destroy', 'destroy' ), ( 'move', 'move' ) )
-  JOB_STATE_CHOICES = ( ( 'new', 'new' ), ( 'waiting', 'waiting' ), ( 'done', 'done' ), ( 'error', 'error' ) )
+  """
+  Job is the individual step for each action.  Contracor breaks up each deployable
+  unit into two parts, a Foundation and Structure.  These Jobs track Contractor's
+  progress in destroy/createing/moving each of these parts.
+  """
   action = models.OneToOneField( Action, on_delete=models.PROTECT )
-  target = models.CharField( max_length=10, choices=JOB_TARGET_CHOICES )
-  task = models.CharField( max_length=7, choices=JOB_TASK_CHOICES )
-  state = models.CharField( max_length=7, choices=JOB_STATE_CHOICES )
+  target = models.CharField( max_length=10, choices=zip( JOB_TARGET_CHOICES, JOB_TARGET_CHOICES ) )
+  task = models.CharField( max_length=7, choices=zip( JOB_TASK_CHOICES, JOB_TASK_CHOICES ) )
+  state = models.CharField( max_length=7, choices=zip( JOB_STATE_CHOICES, JOB_STATE_CHOICES ) )
   web_hook_token = models.CharField( max_length=40, blank=True, null=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -234,6 +276,11 @@ class Job( models.Model ):
     self.save()
 
     return 'thanks'
+
+  @cinp.list_filter( name='action', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Builder.models.Action' } ] )
+  @staticmethod
+  def filter_action( action ):
+    return Job.objects.filter( action=action )
 
   @cinp.check_auth()
   @staticmethod
