@@ -24,7 +24,7 @@ JOB_TASK_CHOICES = ( 'build', 'destroy', 'move' )
 JOB_STATE_CHOICES = ( 'new', 'waiting', 'done', 'error' )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], constant_set_map={ 'state': INSTANCE_STATE_CHOICES } )
+@cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], constant_set_map={ 'state': INSTANCE_STATE_CHOICES } )
 class Instance( models.Model ):
   """
   A Deployment Instance, These are created and destroyed when the plan is evaluated.
@@ -89,14 +89,14 @@ class Instance( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'Instance({0}) "{1}" of "{2}" in "{3}" blueprint "{4}"'.format( self.pk, self.hostname, self.plan.name, self.complex, self.blueprint )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], property_list=( 'progress', ), constant_set_map={ 'action': ACTION_ACTION_CHOICES } )
+@cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], property_list=( 'progress', ), constant_set_map={ 'action': ACTION_ACTION_CHOICES } )
 class Action( models.Model ):
   """
   Actions are in flight action that is building, destroying, rebuilding or moving an
@@ -207,14 +207,14 @@ class Action( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'Action({0}) ""{1}" for "{2}"'.format( self.pk, self.action, self.instance )
 
 
-@cinp.model( not_allowed_method_list=[ 'DELETE', 'CREATE', 'UPDATE' ], hide_field_list=[ 'web_hook_token' ], constant_set_map={ 'target': JOB_TARGET_CHOICES, 'task': JOB_TASK_CHOICES, 'state': JOB_STATE_CHOICES } )
+@cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE' ], hide_field_list=[ 'web_hook_token' ], constant_set_map={ 'target': JOB_TARGET_CHOICES, 'task': JOB_TASK_CHOICES, 'state': JOB_STATE_CHOICES } )
 class Job( models.Model ):
   """
   Job is the individual step for each action.  Contracor breaks up each deployable
@@ -284,7 +284,7 @@ class Job( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):

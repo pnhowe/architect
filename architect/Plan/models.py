@@ -16,7 +16,7 @@ Models that relate the Plans to BluePrints and TimeSeries data
 """ )
 
 
-@cinp.model( not_allowed_method_list=[ 'CALL' ], read_only_list=[ 'nonce_counter', 'last_change' ] )
+@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'nonce_counter', 'last_change' ] )
 class Plan( models.Model ):
   """
   Deployment Plan.  We can source multiple data streams and build for multiple
@@ -84,14 +84,14 @@ class Plan( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'Plan "{0}"'.format( self.name )
 
 
-@cinp.model( not_allowed_method_list=[] )
+@cinp.model( not_allowed_verb_list=[] )
 class PlanComplex( models.Model ):
   """
   Attaches a Plan to a Complex.
@@ -134,7 +134,7 @@ class PlanComplex( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
@@ -144,7 +144,7 @@ class PlanComplex( models.Model ):
     unique_together = ( ( 'plan', 'complex' ), )
 
 
-@cinp.model( not_allowed_method_list=[ 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'CALL' ] )
 class PlanBluePrint( models.Model ):
   """
   Attaches a Plan to a BluePrint
@@ -175,7 +175,7 @@ class PlanBluePrint( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
@@ -185,7 +185,7 @@ class PlanBluePrint( models.Model ):
     unique_together = ( ( 'plan', 'blueprint' ), )
 
 
-@cinp.model( not_allowed_method_list=[ 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'CALL' ] )
 class PlanTimeSeries( models.Model ):
   """
   Attaches a Plan to a TimeSeries values (this is not the Cost/Availablilty/Reliability)
@@ -219,7 +219,7 @@ class PlanTimeSeries( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
