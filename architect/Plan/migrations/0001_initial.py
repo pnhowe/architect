@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 ('slots_per_complex', models.IntegerField(default=100)),
                 ('change_cooldown', models.IntegerField(default=300)),
                 ('max_inflight', models.IntegerField(default=2)),
-                ('last_change', models.DateTimeField()),
+                ('last_change', models.DateTimeField(blank=True, null=True)),
                 ('nonce_counter', models.IntegerField(default=1)),
                 ('can_move', models.BooleanField(default=False)),
                 ('can_destroy', models.BooleanField(default=False)),

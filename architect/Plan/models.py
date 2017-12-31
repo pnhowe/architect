@@ -48,7 +48,7 @@ class Plan( models.Model ):
   slots_per_complex = models.IntegerField( default=100 )
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
   max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
-  last_change = models.DateTimeField()
+  last_change = models.DateTimeField( blank=True, null=True )
   nonce_counter = models.IntegerField( default=1 )  # is hashed (with other stuff) to be used as the nonc string, https://stackoverflow.com/questions/4567089/hash-function-that-produces-short-hashes
   can_move = models.BooleanField( default=False )
   can_destroy = models.BooleanField( default=False )
