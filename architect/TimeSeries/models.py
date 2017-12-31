@@ -19,7 +19,7 @@ member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$' )
 cinp = CInP( 'TimeSeries', '0.1' )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class TimeSeries( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -36,14 +36,14 @@ class TimeSeries( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   class Meta:
     abstract = True
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class RawTimeSeries( TimeSeries ):
   metric = models.CharField( max_length=200 )
 
@@ -66,14 +66,14 @@ class RawTimeSeries( TimeSeries ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'RawTimeSeries for "{0}"'.format( self.metric )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class CostTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
@@ -96,14 +96,14 @@ class CostTS( TimeSeries ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'CostTS for "{0}"'.format( self.complex )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class AvailabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
@@ -126,14 +126,14 @@ class AvailabilityTS( TimeSeries ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
     return 'AvailabilityTS for "{0}"'.format( self.complex )
 
 
-@cinp.model( not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class ReliabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
@@ -156,7 +156,7 @@ class ReliabilityTS( TimeSeries ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
@@ -164,7 +164,7 @@ class ReliabilityTS( TimeSeries ):
 
 
 # TODO: add a max grow/shrink
-@cinp.model( property_list=[ 'uid' ], not_allowed_method_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
+@cinp.model( property_list=[ 'uid' ], not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
 class Controller( models.Model ):  # this fields should match the default member in lib.py
   """
 NOTE: This has yet to be updated with the new philosphy, can be ignored for now
@@ -263,7 +263,7 @@ can_shrink -> allowed to shrink
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):

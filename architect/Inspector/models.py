@@ -11,7 +11,7 @@ from architect.TimeSeries.TimeSeries import getTS
 cinp = CInP( 'Inspector', '0.1' )
 
 
-@cinp.model( property_list=[ 'target_range', 'graph_url', 'building', 'destroying' ], not_allowed_method_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
+@cinp.model( property_list=[ 'target_range', 'graph_url', 'building', 'destroying' ], not_allowed_verb_list=[ 'DELETE', 'CREATE', 'CALL', 'UPDATE' ] )
 class Inspection( models.Model ):
   instance = models.OneToOneField( Instance, primary_key=True, on_delete=models.CASCADE )
   state = JSONField()
@@ -57,7 +57,7 @@ class Inspection( models.Model ):
 
   @cinp.check_auth()
   @staticmethod
-  def checkAuth( user, method, id_list, action=None ):
+  def checkAuth( user, verb, id_list, action=None ):
     return True
 
   def __str__( self ):
