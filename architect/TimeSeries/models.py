@@ -11,7 +11,7 @@ from architect.TimeSeries.TimeSeries import getTS
 LAST_VALUE_MAX_AGE = 3600  # in seconds
 
 SCALER_CHOICES = ( ( 'none', 'None' ), ( 'step', 'Step' ), ( 'linear', 'Linear' ) )
-GRAPH_DATA_DURATION = 7200  # in seconds
+MAX_GRAPH_DATA_DURATION = 7200  # in seconds
 
 metric_regex = re.compile( '^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$' )
 member_name_regex = re.compile( '^[a-zA-Z0-9\-_]{2,50}$' )
@@ -24,12 +24,10 @@ class TimeSeries( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
-  # Do not expose graph_data to cinp as a property, this saves on some extra work when the data is not needed
-  @property
-  def graph_data( self ):
+  def graph_data( self, duration ):
     return []
 
-  # Do not expose graph_data to cinp as a property, this saves on some extra work when the data is not needed
+  # Do not expose last_value to cinp as a property, this saves on some extra work when the data is not needed
   @property
   def last_value( self ):
     return None
@@ -48,8 +46,9 @@ class RawTimeSeries( TimeSeries ):
   metric = models.CharField( max_length=200 )
 
   @property
-  def graph_data( self ):
-    return getTS().get( self.metric, GRAPH_DATA_DURATION, None )
+  def graph_data( self, duration ):
+    duration = min( duration, MAX_GRAPH_DATA_DURATION )
+    return getTS().get( self.metric, duration, None )
 
   @property
   def last_value( self ):
@@ -77,9 +76,9 @@ class RawTimeSeries( TimeSeries ):
 class CostTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
-  @property
-  def graph_data( self ):
-    return getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
+  def graph_data( self, duration ):
+    duration = min( duration, MAX_GRAPH_DATA_DURATION )
+    return getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), duration, None )
 
   @property
   def last_value( self ):
@@ -107,9 +106,9 @@ class CostTS( TimeSeries ):
 class AvailabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
-  @property
-  def graph_data( self ):
-    return getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
+  def graph_data( self, duration ):
+    duration = min( duration, MAX_GRAPH_DATA_DURATION )
+    return getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), duration, None )
 
   @property
   def last_value( self ):
@@ -137,9 +136,9 @@ class AvailabilityTS( TimeSeries ):
 class ReliabilityTS( TimeSeries ):
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
-  @property
-  def graph_data( self ):
-    return getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), GRAPH_DATA_DURATION, None )
+  def graph_data( self, duration ):
+    duration = min( duration, MAX_GRAPH_DATA_DURATION )
+    return getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), duration, None )
 
   @property
   def last_value( self ):
