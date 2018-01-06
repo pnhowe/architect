@@ -108,8 +108,8 @@ class PlanComplex( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
-  @cinp.action( return_type={ 'type': 'Map' }, paramater_type_list=[ { 'type': 'Integer', 'default': 3600 } ] )
-  def graph_data( self, duration ):
+  @cinp.action( return_type={ 'type': 'Map' }, paramater_type_list=[ { 'type': 'Integer' } ] )
+  def graph_data( self, duration=3600 ):
     result = { 'graph': {}, 'value': {} }
     result[ 'graph' ][ 'cost' ] = self.cost.graph_data( duration )
     result[ 'graph' ][ 'availability' ] = self.availability.graph_data( duration )
