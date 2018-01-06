@@ -8,7 +8,7 @@ from cinp.orm_django import DjangoCInP as CInP
 
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
-from architect.fields import MapField, script_name_regex
+from architect.fields import MapField, script_name_regex, plan_name_regex
 from architect.tcalc.parser import lint
 
 cinp = CInP( 'Plan', '0.1', doc="""This is where the Deployment Plans and the
@@ -72,6 +72,10 @@ class Plan( models.Model ):
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
     errors = {}
+
+    if not plan_name_regex.match( self.name ):
+      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
+
     if self.slots_per_complex < 1 or self.slots_per_complex > 5000:
       errors[ 'slots_per_complex' ] = 'must be from 1 to 5000'
 
@@ -104,12 +108,12 @@ class PlanComplex( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
-  @cinp.action( return_type={ 'type': 'Map' } )
-  def graph_data( self ):
+  @cinp.action( return_type={ 'type': 'Map' }, paramater_type_list=[ { 'type': 'Integer' } ] )
+  def graph_data( self, duration=3600 ):
     result = { 'graph': {}, 'value': {} }
-    result[ 'graph' ][ 'cost' ] = self.cost.graph_data
-    result[ 'graph' ][ 'availability' ] = self.availability.graph_data
-    result[ 'graph' ][ 'reliability' ] = self.reliability.graph_data
+    result[ 'graph' ][ 'cost' ] = self.cost.graph_data( duration )
+    result[ 'graph' ][ 'availability' ] = self.availability.graph_data( duration )
+    result[ 'graph' ][ 'reliability' ] = self.reliability.graph_data( duration )
     result[ 'value' ][ 'cost' ] = self.cost.last_value
     result[ 'value' ][ 'availability' ] = self.availability.last_value
     result[ 'value' ][ 'reliability' ] = self.reliability.last_value
