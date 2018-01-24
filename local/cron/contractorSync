@@ -28,7 +28,7 @@ for contractor_id in add_list:
 
 for contractor_id in remove_list:
   complex = Complex.objects.get( contractor_id=contractor_id )
-  if complex.tsname is None:   # not attached to  anything can just remove
+  if complex.tsname is None:   # not attached to anything can just remove
     print( 'Deleting "{0}"...'.format( contractor_id ) )
     complex.delete()
 
@@ -55,7 +55,7 @@ for contractor_id in add_list:
 
 for contractor_id in remove_list:
   blueprint = BluePrint.objects.get( contractor_id=contractor_id )
-  if blueprint.tsname is None:   # not attached to  anything can just remove
+  if blueprint.tsname is None:   # not attached to anything can just remove
     print( 'Deleting "{0}"...'.format( contractor_id ) )
     blueprint.delete()
 

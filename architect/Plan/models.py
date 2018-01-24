@@ -38,7 +38,7 @@ class Plan( models.Model ):
   name = models.CharField( max_length=50, primary_key=True )
   description = models.CharField( max_length=200 )
   enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
-  hostname_pattern = models.CharField( max_length=100, default='{plan}-{nonce}' )
+  hostname_pattern = models.CharField( max_length=100, default='{plan}-{blueprint}-{nonce}' )
   config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
   script = models.TextField()
   complex_list = models.ManyToManyField( Complex, through='PlanComplex' )

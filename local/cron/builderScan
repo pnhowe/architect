@@ -11,8 +11,6 @@ import logging
 from architect.Plan.models import Plan
 from architect.Builder.models import Action, Job
 
-logging.basicConfig( level=logging.DEBUG )
-
 print( 'Checking Plans...' )
 for plan in Plan.objects.all():
   print( 'Checking plan "{0}"...'.format( plan ) )

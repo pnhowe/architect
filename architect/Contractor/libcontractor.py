@@ -13,7 +13,11 @@ class Contractor():
     self.cinp = CInP( host, root_path, port )
 
   def getComplexes( self ):
-    return self.cinp.getFilteredURIs( '/api/v1/Building/Complex' )
+    for ( id, complex ) in self.cinp.getFilteredObjects( '/api/v1/Building/Complex' ):
+      if complex[ 'state' ] != 'built':
+        continue
+
+      yield self.cinp.uri.extractIds( id )[0]
 
   def getBluePrints( self ):
     return self.cinp.getFilteredURIs( '/api/v1/BluePrint/StructureBluePrint' )
