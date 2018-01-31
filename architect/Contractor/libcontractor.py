@@ -55,11 +55,16 @@ class Contractor():
     data[ 'hostname' ] = hostname
     data[ 'blueprint' ] = '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint )
     data[ 'config_values' ] = config_values
-    data[ 'auto_build' ] = False
+    data[ 'auto_build' ] = False  # architect explicitally starts them
+    structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
 
-    structure = self.cinp.create( '/api/v1/Building/Structure'.format( complex ), data )
-    print( '************************  created "{0}"'.format( structure ) )
-    return self.cinp.uri.extractIds( structure[0] )[0]
+    data = {}
+    data[ 'structure' ] = structure
+    data[ 'interface_name' ] = 'eth0'
+    data[ 'is_primary' ] = True
+    address = self.cinp.call( '/api/v1/Utilities/AddressBlock:1:(nextAddress)', data )
+    print( '************************  created "{0}({1})"'.format( structure, address ) )
+    return self.cinp.uri.extractIds( structure )[0]
 
   def buildStructure( self, id ):
     job_id = self.cinp.call( '/api/v1/Building/Structure:{0}:(doCreate)'.format( id ), {} )
