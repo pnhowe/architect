@@ -5,6 +5,8 @@ import string
 
 from architect.Plan.models import Site, Member
 
+#### OLD STUFF ****
+
 class PlanValidationError( Exception ):
   pass
 
