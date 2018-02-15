@@ -20,11 +20,13 @@ baseline = {
 
 data = {
          'web_requests': 50,
+         'count': 15,
        }
 
 nudges = {
-          'nuc1': { 'cost': 2, 'reliability': 0.5 },
-          'nuc2': { 'cost': 3, 'reliability': 0.6 },
+          'localvbox': { 'cost': 50, 'reliability': 0.5 },
+          'nuc1': { 'cost': 50, 'reliability': 0.5 },
+          'nuc2': { 'cost': 50, 'reliability': 0.6 },
           'docker-e02': { 'reliability': -0.3 }
          }
 

@@ -9,8 +9,9 @@ django.setup()
 from datetime import datetime, timezone, timedelta
 
 from architect.Contractor.models import Complex, BluePrint
-from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
-from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS
+from architect.Plan.models import Plan, PlanComplex, PlanBluePrint, PlanTimeSeries
+from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
+
 
 print( 'Giving Blueprints their names...')
 for blueprint in BluePrint.objects.filter( name__isnull=True ):
@@ -24,15 +25,26 @@ except Plan.DoesNotExist:
   print( 'Creating the Plan...' )
   plan = Plan( name='demo', description='demo', enabled=True )
   plan.script = """
-#demo-web: weighted( *INDEX*, 5, ( 1 / *COST* ) )
+cut_off: 0
+demo: weighted( *INDEX*, @count, ( 1 / *COST* ) )
+#demo-web: above_inclusive( demo, cut_off )
+#demo-ssh: below( demo, cut_off )
 """
   plan.config_values = {}
-  plan.max_inflight = 4
+  plan.max_inflight = 10
   plan.last_change = datetime.now( timezone.utc ) - timedelta( days=1 )
   plan.can_build = True
   plan.can_destroy = True
   plan.full_clean()
   plan.save()
+
+  ts = RawTimeSeries( metric='data.count' )
+  ts.full_clean()
+  ts.save()
+
+  pts = PlanTimeSeries( plan=plan, timeseries=ts, script_name='count' )
+  pts.full_clean()
+  pts.save()
 
   print( 'setting up blueprint link...' )
   blueprint = BluePrint.objects.get( name='demo-web' )

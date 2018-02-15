@@ -56,6 +56,8 @@ def parse( script ):
   return parser.parse( script )
 
 
+# TODO: subsetting needs to be 100%, otherwise the user dosen't know the maxvalue with out to much work.
+
 # NOTE: Function paramaters must be numbered, so that the number of required
 # functions is correctly detected
 function_map = {
@@ -93,9 +95,9 @@ function_init_map = {
   for i in range( 0, int( {1} ) ):
     bucket = int( counter / SLOTS_PER_BUCKET )
     try:
-      interval = safe_div( ( _T_ * safe_div( avg_weight, {2}[ bucket ] ) ), {1} )
+      interval = ( _T_ * ( avg_weight / {2}[ bucket ] ) ) / {1}
       interval = min( interval, SLOTS_PER_BUCKET )
-    except ZeroDivisionError:
+    except ( ZeroDivisionError, TypeError ):
       interval = SLOTS_PER_BUCKET
 
     if interval < 1:
@@ -333,7 +335,7 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
   def ts_value( self, node ):
     name = node.text
 
-    return 'ts_map[ \'{0}\' ]'.format( name[1] )
+    return 'ts_map[ \'{0}\' ]'.format( name[ 1: ] )
 
   def variable( self, node ):
     name = node.text
@@ -345,6 +347,9 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
 
   def blueprint( self, node ):
     name = node.text
+
+    if self.mode == 'init':
+      raise ValueError( 'Unable to refrence values in init' )
 
     return 'b_map[ \'{0}\' ]'.format( name[ 1: ] )
 

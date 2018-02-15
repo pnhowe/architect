@@ -44,7 +44,6 @@ class Plan( models.Model ):
   complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
   blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
   timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
-  static_values = models.TextField( blank=True, null=True )  # TODO: What was this for?
   slots_per_complex = models.IntegerField( default=100 )
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
   max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
