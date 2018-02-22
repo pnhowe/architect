@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from django.db.models import Count
 
-from architect.Plan.models import Plan
+from architect.Plan.models import DynamicPlan
 from architect.Builder.models import Instance, Action
 
 from architect.Plan.caculator import caculateCounts, caculateChangePlan
@@ -24,7 +24,7 @@ for instance in Instance.objects.filter( state='destroyed', updated__lt=datetime
   print( 'Cleaning up destroyed "{0}"...'.format( instance ) )
   instance.delete()
 
-for plan in Plan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
+for plan in DynamicPlan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
   print( 'doing plan "{0}"...'.format( plan ) )
 
   if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):

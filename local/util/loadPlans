@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+import os
+import django
+
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+django.setup()
+
+import sys
+from pprint import pprint
+
+from architect.lib.loader import loadProject, validateProject, diffStaticPlan
+from architect.Plan.models import StaticPlan
+
+auto_apply = False
+try:
+  if sys.argv[1] == '--apply':
+    sys.argv.pop( 1 )
+    auto_apply = True
+
+except IndexError:
+  pass
+
+try:
+  project_folder = sys.argv[1]
+except IndexError:
+  print( 'Usage: {0} <project folder>'.format( sys.argv[0] ) )
+  sys.exit( 1 )
+
+master_file = os.path.join( project_folder, 'architect.toml' )
+
+if not os.path.isfile( master_file ):
+  print( '"{0}" is not a file or does not exist'.format( master_file ) )
+  sys.exit( 1 )
+
+site_list, target = loadProject( project_folder )
+
+validateProject( target )
+
+pprint( target )
+
+for site in site_list:
+  print( 'Checking site "{0}"'.format( site ) )
+  try:
+    plan = StaticPlan.objects.get( name=site )
+  except StaticPlan.DoesNotExist:
+    plan = StaticPlan( name=site, description=target[ 'site' ][ site ][ 'description' ] )
+    plan.enabled = True
+
+  tmp = diffStaticPlan( plan.plan, target[ site ] )
+  pprint( tmp )
+
+  if auto_apply:
+    plan.plan = target[ site ]
+    plan.full_clean()
+    plan.save()

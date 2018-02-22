@@ -9,91 +9,118 @@ import architect.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Contractor', '0001_initial'),
         ('TimeSeries', '0001_initial'),
+        ('Contractor', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
+            name='DynamicPlanBluePrint',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, auto_created=True, verbose_name='ID')),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+                ('blueprint', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.BluePrint')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='DynamicPlanComplex',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, auto_created=True, verbose_name='ID')),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+                ('availability', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='TimeSeries.AvailabilityTS', related_name='+')),
+                ('complex', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.Complex')),
+                ('cost', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='TimeSeries.CostTS', related_name='+')),
+                ('reliability', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='TimeSeries.ReliabilityTS', related_name='+')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='DynamicPlanTimeSeries',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False, auto_created=True, verbose_name='ID')),
+                ('script_name', models.CharField(max_length=50)),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+                ('timeseries', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='TimeSeries.RawTimeSeries', related_name='+')),
+            ],
+        ),
+        migrations.CreateModel(
             name='Plan',
             fields=[
-                ('name', models.CharField(max_length=50, serialize=False, primary_key=True)),
+                ('name', models.CharField(primary_key=True, serialize=False, max_length=50)),
                 ('description', models.CharField(max_length=200)),
                 ('enabled', models.BooleanField(default=False)),
-                ('hostname_pattern', models.CharField(max_length=100, default='{plan}-{blueprint}-{nonce}')),
-                ('config_values', architect.fields.MapField(default={}, blank=True)),
+                ('change_cooldown', models.IntegerField(help_text='number of seconds to wait after a change before re-evaluating the plan', default=300)),
+                ('last_change', models.DateTimeField(blank=True, null=True)),
+                ('max_inflight', models.IntegerField(help_text='number of things that can be changing at the same time', default=2)),
+                ('updated', models.DateTimeField(auto_now=True)),
+                ('created', models.DateTimeField(auto_now_add=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='DynamicPlan',
+            fields=[
+                ('plan_ptr', models.OneToOneField(primary_key=True, to='Plan.Plan', auto_created=True, serialize=False, parent_link=True)),
+                ('hostname_pattern', models.CharField(default='{plan}-{blueprint}-{nonce}', max_length=100)),
+                ('config_values', architect.fields.MapField(help_text="Contracor style config values, which are loaded into Contractor's Structure model when the Structure is created", default={}, blank=True)),
                 ('script', models.TextField()),
                 ('slots_per_complex', models.IntegerField(default=100)),
-                ('change_cooldown', models.IntegerField(default=300)),
-                ('max_inflight', models.IntegerField(default=2)),
-                ('last_change', models.DateTimeField(blank=True, null=True)),
                 ('nonce_counter', models.IntegerField(default=1)),
                 ('can_move', models.BooleanField(default=False)),
                 ('can_destroy', models.BooleanField(default=False)),
                 ('can_build', models.BooleanField(default=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
-                ('created', models.DateTimeField(auto_now_add=True)),
             ],
+            bases=('Plan.plan',),
         ),
         migrations.CreateModel(
-            name='PlanBluePrint',
+            name='StaticPlan',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('blueprint', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.BluePrint')),
-                ('plan', models.ForeignKey(to='Plan.Plan')),
+                ('plan_ptr', models.OneToOneField(primary_key=True, to='Plan.Plan', auto_created=True, serialize=False, parent_link=True)),
+                ('plan', architect.fields.MapField(default={})),
             ],
-        ),
-        migrations.CreateModel(
-            name='PlanComplex',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
-                ('updated', models.DateTimeField(auto_now=True)),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('availability', models.ForeignKey(related_name='+', to='TimeSeries.AvailabilityTS', on_delete=django.db.models.deletion.PROTECT)),
-                ('complex', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Contractor.Complex')),
-                ('cost', models.ForeignKey(related_name='+', to='TimeSeries.CostTS', on_delete=django.db.models.deletion.PROTECT)),
-                ('plan', models.ForeignKey(to='Plan.Plan')),
-                ('reliability', models.ForeignKey(related_name='+', to='TimeSeries.ReliabilityTS', on_delete=django.db.models.deletion.PROTECT)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='PlanTimeSeries',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', auto_created=True, serialize=False, primary_key=True)),
-                ('script_name', models.CharField(max_length=50)),
-                ('updated', models.DateTimeField(auto_now=True)),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('plan', models.ForeignKey(to='Plan.Plan')),
-                ('timeseries', models.ForeignKey(related_name='+', to='TimeSeries.RawTimeSeries', on_delete=django.db.models.deletion.PROTECT)),
-            ],
+            bases=('Plan.plan',),
         ),
         migrations.AddField(
-            model_name='plan',
+            model_name='dynamicplantimeseries',
+            name='plan',
+            field=models.ForeignKey(to='Plan.DynamicPlan'),
+        ),
+        migrations.AddField(
+            model_name='dynamicplancomplex',
+            name='plan',
+            field=models.ForeignKey(to='Plan.DynamicPlan'),
+        ),
+        migrations.AddField(
+            model_name='dynamicplanblueprint',
+            name='plan',
+            field=models.ForeignKey(to='Plan.DynamicPlan'),
+        ),
+        migrations.AddField(
+            model_name='dynamicplan',
             name='blueprint_list',
-            field=models.ManyToManyField(through='Plan.PlanBluePrint', to='Contractor.BluePrint'),
+            field=models.ManyToManyField(through='Plan.DynamicPlanBluePrint', to='Contractor.BluePrint'),
         ),
         migrations.AddField(
-            model_name='plan',
+            model_name='dynamicplan',
             name='complex_list',
-            field=models.ManyToManyField(through='Plan.PlanComplex', to='Contractor.Complex'),
+            field=models.ManyToManyField(through='Plan.DynamicPlanComplex', to='Contractor.Complex'),
         ),
         migrations.AddField(
-            model_name='plan',
+            model_name='dynamicplan',
             name='timeseries_list',
-            field=models.ManyToManyField(through='Plan.PlanTimeSeries', to='TimeSeries.RawTimeSeries'),
+            field=models.ManyToManyField(through='Plan.DynamicPlanTimeSeries', to='TimeSeries.RawTimeSeries'),
         ),
         migrations.AlterUniqueTogether(
-            name='plantimeseries',
+            name='dynamicplantimeseries',
             unique_together=set([('plan', 'timeseries')]),
         ),
         migrations.AlterUniqueTogether(
-            name='plancomplex',
+            name='dynamicplancomplex',
             unique_together=set([('plan', 'complex')]),
         ),
         migrations.AlterUniqueTogether(
-            name='planblueprint',
+            name='dynamicplanblueprint',
             unique_together=set([('plan', 'blueprint')]),
         ),
     ]
