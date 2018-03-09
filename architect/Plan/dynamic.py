@@ -89,7 +89,7 @@ def caculateChangePlan( plan, complex_name_list, target, current ):
 
       elif diff < 0 and plan.can_build:
         for _ in range( diff, 0 ):
-          result.append( ( 'create', complex_name, blueprint_name ) )
+          result.append( ( 'create', 'complex', complex_name, blueprint_name ) )
 
       elif diff > 0 and plan.can_destroy:
         # first find anything that hasn't been built, this techinically just reduces some thrashing

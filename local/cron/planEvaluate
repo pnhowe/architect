@@ -10,22 +10,23 @@ from datetime import datetime, timedelta, timezone
 
 from django.db.models import Count
 
-from architect.Plan.models import DynamicPlan
-from architect.Builder.models import Instance, Action
+from architect.Plan.models import DynamicPlan, StaticPlan
+from architect.Builder.models import Instance
 
-from architect.Plan.caculator import caculateCounts, caculateChangePlan
+from architect.Plan.dynamic import caculateCounts, caculateChangePlan
+from architect.Plan.static import caculateChangePlanStatic
+from architect.Builder.lib import cleanUp, applyChanges
+
 
 CLEANUP_DESTROYED_AFFTER = 3600  # in seconds
 
 # IMPORTANT!!!! this dosen't have any locking, only one cron process at a time
 # Also: this really need through testing, make sure to  test when there are jobs/Actions inflight
 
-for instance in Instance.objects.filter( state='destroyed', updated__lt=datetime.now( timezone.utc ) - timedelta( seconds=CLEANUP_DESTROYED_AFFTER ) ):
-  print( 'Cleaning up destroyed "{0}"...'.format( instance ) )
-  instance.delete()
+cleanUp( CLEANUP_DESTROYED_AFFTER )
 
-for plan in DynamicPlan.objects.filter( enabled=True ):  # TODO: check cooldown delay, make sure there are not any jobs running
-  print( 'doing plan "{0}"...'.format( plan ) )
+for plan in DynamicPlan.objects.filter( enabled=True ):
+  print( 'doing dynamic plan "{0}"...'.format( plan ) )
 
   if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
     print( 'still hot, skipping...' )
@@ -67,65 +68,24 @@ for plan in DynamicPlan.objects.filter( enabled=True ):  # TODO: check cooldown 
   plan.full_clean()
   plan.save()
 
-  for change in change_list:
-    if change[0] == 'create':
-      _, complex_name, blueprint_name = change
-      instance = Instance.create( plan, complex_name, blueprint_name )
-      Action.create( instance, 'build' )
-      print( 'new instance "{0}"'.format( instance ) )
+  applyChanges( plan, change_list )
 
-    elif change[0] == 'destroy':
-      _, instance = change
-      if instance.state == 'destroyed':
-        print( 'Instance "{0}" allready destroyed, ignorning' )
 
-      else:
-        try:
-          action = instance.action
-        except AttributeError:
-          action = None
+for plan in StaticPlan.objects.filter( enabled=True ):
+  print( 'doing static plan "{0}"...'.format( plan ) )
 
-        if action is not None:
-          if action.state == {}:
-            print( 'delete unused instance "{0}"'.format( instance ) )
-            instance.action.delete()
-            instance.delete()
+  if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
+    print( 'still hot, skipping...' )
+    continue
 
-          else:
-            print( 'action is still busy, ignoring request to destroy' )
+  change_list = caculateChangePlanStatic( plan )
+  print( change_list )
 
-        else:
-          print( 'unrequesting "{0}"'.format( instance ) )
-          Action.create( instance, 'destroy' )
+  if not change_list:
+    continue
 
-    elif change[0] == 'move':
-      _, instance, complex_name = change
-      print( 'moving "{0}" to "{1}"'.format( instance, complex_name ) )
-      if instance.state == 'destroyed':
-        print( '  Instance "{0}" allready destroyed, ignorning' )
+  plan.last_change = datetime.now( timezone.utc )
+  plan.full_clean()
+  plan.save()
 
-      else:
-        try:
-          action = instance.action
-        except AttributeError:
-          action = None
-
-        if action is not None:
-          if action.state == {}:
-            print( ' delete unused instance "{0}"'.format( instance ) )
-            blueprint_name = instance.blueprint_name
-            instance.action.delete()
-            instance.delete()
-
-            instance = Instance.create( plan, complex_name, blueprint_name )
-            Action.create( instance, 'build' )
-            print( '  new instance "{0}"'.format( instance ) )
-
-          else:
-            print( 'action is still busy, ignoring request to move' )
-
-        else:
-          Action.create( instance, 'move', complex_name )
-
-    else:
-      raise ValueError( 'Unknown change "{0}"'.format( change ) )
+  applyChanges( plan, change_list )

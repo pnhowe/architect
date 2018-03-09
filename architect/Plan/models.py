@@ -17,13 +17,16 @@ Models that relate the Plans to BluePrints and TimeSeries data
 
 
 @cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
-class Plan( models.Model ):
+class Site( models.Model ):
   name = models.CharField( max_length=50, primary_key=True )
-  description = models.CharField( max_length=200 )
-  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
-  change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
-  last_change = models.DateTimeField( blank=True, null=True )
-  max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
+  parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.CASCADE )
+  config_values = MapField( blank=True )
+  static_entrie_map = MapField()
+  address_block_map = MapField()
+
+  last_load_hash = models.CharField( max_length=40 )  # sha1
+  last_load = models.DateTimeField
+
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -33,6 +36,34 @@ class Plan( models.Model ):
 
     if not plan_name_regex.match( self.name ):
       errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
+
+    if errors:
+      raise ValidationError( errors )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, verb, id_list, action=None ):
+    return True
+
+  def __str__( self ):
+    return 'Site "{0}"'.format( self.name )
+
+
+@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
+class Plan( models.Model ):
+  site = models.OneToOneField( Site, primary_key=True )
+  description = models.CharField( max_length=200 )
+  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
+  change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
+  config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
+  last_change = models.DateTimeField( blank=True, null=True )
+  max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    errors = {}
 
     if errors:
       raise ValidationError( errors )
@@ -82,7 +113,6 @@ class DynamicPlan( Plan ):
   created/destroyed/moved.
   """
   hostname_pattern = models.CharField( max_length=100, default='{plan}-{blueprint}-{nonce}' )
-  config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
   script = models.TextField()
   complex_list = models.ManyToManyField( Complex, through='DynamicPlanComplex' )
   blueprint_list = models.ManyToManyField( BluePrint, through='DynamicPlanBluePrint' )

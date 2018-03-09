@@ -22,12 +22,50 @@ class Contractor():
   def getBluePrints( self ):
     return self.cinp.getFilteredURIs( '/api/v1/BluePrint/StructureBluePrint' )
 
+  def createFoundationStructure( self, foundation_type, site_id, blueprint, hostname, config_values, address_block_id, address_offest ):
+    data = {}
+    data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
+    data[ 'locator' ] = hostname
+    if foundation_type == 'Manual':
+      data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:generic-manual:'
+      foundation = self.cinp.create( '/api/v1/Manual/ManualFoundation'.format( complex ), data )[0]
+
+    else:
+      raise ValueError( 'Unknown foundation type "{0}"'.format( foundation_type ) )
+
+    foundation_id = self.cinp.uri.extractIds( foundation )[0]
+
+    data = {}
+    data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
+    data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
+    data[ 'hostname' ] = hostname
+    data[ 'blueprint' ] = '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint )
+    data[ 'config_values' ] = config_values
+    data[ 'auto_build' ] = True  # Static stuff builds when it can
+    structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
+    structure_id = self.cinp.uri.extractIds( structure )[0]
+
+    data = {}
+    data[ 'networked' ] = '/api/v1/Utilities/Networked:{0}:'.format( structure_id )
+    data[ 'address_block' ] = '/api/v1/Utilities/AddressBlock:{0}:'.format( address_block_id )
+    data[ 'offset' ] = address_offest
+    data[ 'interface_name' ] = 'eth0'
+    data[ 'vlan' ] = 0
+    data[ 'is_primary' ] = True
+    print( 'sdsfsdf' )
+    print( data )
+    address = self.cinp.create( '/api/v1/Utilities/Address', data )[0]
+
+    print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address ) )
+
+    return foundation_id, structure_id
+
   def getComplex( self, id ):
     complex = self.cinp.get( '/api/v1/Building/Complex:{0}:'.format( id ) )
     complex[ 'site' ] = self.cinp.uri.extractIds( complex[ 'site' ] )[0]
     return complex
 
-  def createFoundation( self, complex, blueprint, hostname ):
+  def createComplexFoundation( self, complex, blueprint, hostname ):
     foundation = self.cinp.call( '/api/v1/Building/Complex:{0}:(createFoundation)'.format( complex ), { 'hostname': hostname } )
     print( '************************ created "{0}"'.format( foundation ) )
 
@@ -48,7 +86,7 @@ class Contractor():
   def destroyFoundation( self, id ):
     self.cinp.call( '/api/v1/Building/Foundation:{0}:(doDestroy)'.format( id ), {} )
 
-  def createStructure( self, site_id, foundation_id, blueprint, hostname, config_values ):
+  def createComplexStructure( self, site_id, foundation_id, blueprint, hostname, config_values ):
     data = {}
     data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
     data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
@@ -64,7 +102,9 @@ class Contractor():
     data[ 'is_primary' ] = True
     address = self.cinp.call( '/api/v1/Utilities/AddressBlock:1:(nextAddress)', data )
     print( '************************  created "{0}({1})"'.format( structure, address ) )
-    return self.cinp.uri.extractIds( structure )[0]
+
+    structure_id = self.cinp.uri.extractIds( structure )[0]
+    return structure_id
 
   def buildStructure( self, id ):
     job_id = self.cinp.call( '/api/v1/Building/Structure:{0}:(doCreate)'.format( id ), {} )
