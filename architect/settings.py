@@ -29,6 +29,7 @@ INSTALLED_APPS = (
     'architect.Contractor',
     'architect.TimeSeries',
     'architect.Plan',
+    'architect.Project',
     'architect.Builder',
     'architect.Inspector',
     'django.contrib.admin',

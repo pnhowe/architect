@@ -12,6 +12,27 @@ class Contractor():
     super().__init__()
     self.cinp = CInP( host, root_path, port )
 
+  def getSiteList( self ):
+    return self.cinp.getFilteredURIs( '/api/v1/Site/Site' )
+
+  def createSite( self, name, description ):
+    self.cinp.create( '/api/v1/Site/Site', { 'name': name, 'description': description } )
+
+  def getSite( self, id ):
+    return self.cinp.get( '/api/v1/Site/Site:{0}:'.format( id ) )
+
+  def updateSite( self, id, description=None, config_values=None ):
+    data = {}
+    if description is not None:
+      data[ 'description' ] = description
+    if config_values is not None:
+      data[ 'config_values' ] = config_values
+
+    self.cinp.update( '/api/v1/Site/Site:{0}:'.format( id ), data )
+
+
+
+
   def getComplexes( self ):
     for ( id, complex ) in self.cinp.getFilteredObjects( '/api/v1/Building/Complex' ):
       if complex[ 'state' ] != 'built':

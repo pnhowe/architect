@@ -13,8 +13,8 @@ cinp = CInP( 'Contractor', '0.1' )
 
 
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'CALL' ] )
-class Complex( models.Model ):
-  contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )  # TODO: ReadOnly from API
+class Complex( models.Model ):   # TODO: ReadOnly from API
+  contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )
   site_id = models.CharField( max_length=40 )  # NOTE: for now this is set when created, but not updated, hopfully ccomplexes don't move sites much
   tsname = models.CharField( max_length=50, unique=True, blank=True, null=True )
   updated = models.DateTimeField( auto_now=True )
@@ -45,8 +45,8 @@ class Complex( models.Model ):
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
-class BluePrint( models.Model ):
-  contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )  # TODO: ReadOnly from API
+class BluePrint( models.Model ):   # TODO: ReadOnly from API
+  contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )
   name = models.CharField( max_length=50, unique=True, blank=True, null=True )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )

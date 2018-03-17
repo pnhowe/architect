@@ -20,12 +20,11 @@ Models that relate the Plans to BluePrints and TimeSeries data
 class Site( models.Model ):
   name = models.CharField( max_length=50, primary_key=True )
   parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.CASCADE )
-  config_values = MapField( blank=True )
-  static_entrie_map = MapField()
-  address_block_map = MapField()
+  static_entry_map = MapField( blank=True )
+  address_block_map = MapField( blank=True )
 
   last_load_hash = models.CharField( max_length=40 )  # sha1
-  last_load = models.DateTimeField
+  last_load = models.DateTimeField()
 
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )

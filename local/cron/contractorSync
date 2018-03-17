@@ -7,9 +7,23 @@ os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
 from architect.Contractor.models import Complex, BluePrint
+from architect.Plan.models import DynamicPlanBluePrint
+from architect.Builder.models import Instance
 from architect.Contractor.libcontractor import getContractor
 
 contractor = getContractor()
+
+print( 'Checking Blueprint usage' )
+
+used_blueprints = set( DynamicPlanBluePrint.objects.all().value_list( 'blueprint', flat=True ) )
+used_blueprints += set( Instance.objects.all().value_list( 'blueprint', flat=True ) )
+all_blueprints = set( BluePrint.objects.all().values_list( 'name', flat=True ) )
+
+for pk in list( all_blueprints - used_blueprints ):
+  blueprint = BluePrint.objects.get( pk=pk )
+  blueprint.name = None
+  blueprint.full_clean()
+  blueprint.save()
 
 print( 'Getting master Complex lists...' )
 
@@ -64,5 +78,13 @@ for contractor_id in remove_list:
     blueprint.contractor_id = None
     blueprint.full_clean()
     blueprint.save()
+
+# TODO: probalby need to re-thing the local bluprint names, for now only removing them for this script seems a bit silly
+print( 'Enabeling Blueprints' )
+
+for blueprint in BluePrint.objects.filter( name__isnull=True ):
+  blueprint.name = blueprint.contractor_id
+  blueprint.full_clean()
+  blueprint.save()
 
 print( 'Done' )

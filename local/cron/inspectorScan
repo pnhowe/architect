@@ -27,7 +27,7 @@ for member in Member.objects.filter( inspection=None ):
   inspection.clean()
   inspection.save()
 
-for inspection in Inspection.objects.filter( next_check__lte=timezone.now() ):
+for inspection in Inspection.objects.filter( next_check__lte=datetime.now( timezone.utc ) ):
   print( 'Checking State for {0}'.format( inspection ) )
   timestamp = time.time()
   ( new_value, normalized_value ) = updateInspection( inspection )

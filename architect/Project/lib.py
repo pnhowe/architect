@@ -41,11 +41,9 @@ def _prep_paramaters( paramater_map ):
 def loadProject( project_path ):
   config = toml.load( os.path.join( project_path, 'architect.toml' ) )
   result = {}
-  site_list = []
 
   for name in config[ 'site' ]:
     site = config[ 'site' ][ name ]
-    site_list.append( name )
     result[ name ] = site
     for item in item_list:
       try:
@@ -65,7 +63,7 @@ def loadProject( project_path ):
     except KeyError:
       pass
 
-  return ( list( set( site_list ) ), result )
+  return result
 
 ADDRESSBLOCK_PATTERN = {
                         'subnet': str,
@@ -77,7 +75,7 @@ ADDRESSBLOCK_PATTERN = {
 
 
 INSTANCE_PATTERN = {
-                      'address_list': [ { 'address_block': int, 'offset': int } ],
+                      'address_list': [ { 'address_block': str, 'offset': int } ],
                       'type': str
                    }
 
@@ -140,19 +138,3 @@ def validateProject( config ):
         raise ValueError( 'Instance "{0}" in "{1}" missing type'.format( hostname, site ) )
 
       _validate_item( 'instance.{0}.{1}'.format( site, hostname ), config[ site ][ 'instance' ][ hostname ], INSTANCE_PATTERN_MAP[ ftype ] )
-
-
-def diffStaticPlan( old, new ):
-  result = {}
-  for item in item_list:
-    try:
-      old_items = set( old[ item ].keys() )
-    except KeyError:
-      old_items = set( [] )
-    new_items = set( new[ item ].keys() )
-
-    result[ item ] = {}
-    result[ item ][ 'adding' ] = list( new_items - old_items )
-    result[ item ][ 'removing' ] = list( old_items - new_items )
-
-  return result

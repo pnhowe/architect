@@ -45,6 +45,7 @@ if __name__ == '__main__':
   app.registerNamespace( '/', 'architect.TimeSeries' )
   app.registerNamespace( '/', 'architect.Builder' )
   app.registerNamespace( '/', 'architect.Plan' )
+  app.registerNamespace( '/', 'architect.Project' )
   app.registerNamespace( '/', 'architect.Inspector' )
 
   logger.info( 'Validating...' )
