@@ -38,6 +38,29 @@ def _prep_paramaters( paramater_map ):
       paramater_map[ name ] = '\'{0}\''.format( paramater_map[ name ] )
 
 
+def _fix_types( data ):
+  if isinstance( data, dict ):
+    for key, value in data.items():
+      if type( value ).__name__ == 'DynamicInlineTableDict':
+        data[ key ] = dict( value )
+
+      _fix_types( value )
+
+  elif isinstance( data, list ):
+    for index in range( 0, len( data ) ):
+      value = data[ index ]
+      if type( value ).__name__ == 'DynamicInlineTableDict':
+        data[ index ] = dict( value )
+
+      _fix_types( value )
+
+  elif isinstance( data, ( str, int ) ):
+    return
+
+  else:
+    raise ValueError( 'Unknown type "{0}"'.format( type( data ).__name__ ) )
+
+
 def loadProject( project_path ):
   config = toml.load( os.path.join( project_path, 'architect.toml' ) )
   result = {}
@@ -62,6 +85,8 @@ def loadProject( project_path ):
       del site[ '__include__' ]
     except KeyError:
       pass
+
+  _fix_types( result )
 
   return result
 
@@ -95,16 +120,13 @@ COMPLEX_PATTERN = {
 def _validate_item( location, item, pattern ):
   itype = type( item )
 
-  if itype.__name__ == 'DynamicInlineTableDict':
-    itype = dict
-
   if isinstance( pattern, type ):
     rtype = pattern
   else:
     rtype = type( pattern )
 
   if itype != rtype:
-    raise ValueError( '"{0}", is the wrong type, expected "{2}", got "{3}"'.format( location, rtype.__name__, itype.__name__ ) )
+    raise ValueError( '"{0}", is the wrong type, expected "{1}", got "{2}"'.format( location, rtype.__name__, itype.__name__ ) )
 
   if rtype == dict:
     for name, sub_pattern in pattern.items():

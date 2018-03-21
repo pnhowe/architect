@@ -8,7 +8,6 @@ from django.db import models
 from django.conf import settings
 
 from cinp.orm_django import DjangoCInP as CInP
-from cinp.client import NotFound
 from django.core.exceptions import ValidationError
 
 from architect.Plan.models import Site
@@ -20,8 +19,37 @@ from architect.Contractor.libcontractor import getContractor
 cinp = CInP( 'Project', '0.1', doc="""This is the loader for the Project as a whole
 """ )
 
-CHANGE_TYPE_CHOICES = ( 'site', 'address_block' )
+CHANGE_TYPE_CHOICES = ( 'site', 'address_block', 'instance' )
 CHANGE_ACTION_CHOICES = ( 'local_create', 'remote_create', 'local_delete', 'remote_delete', 'change' )
+
+
+def _compare( a, b, name_list ):
+  result = []
+  for name in name_list:
+    try:
+      a_val = a[ name ]
+    except KeyError:
+      raise ValueError( 'name "{0}" not found in first set'.format( name ) )
+
+    try:
+      b_val = b[ name ]
+    except KeyError:
+      raise ValueError( 'name "{0}" not found in second set'.format( name ) )
+
+    a_type = type( a_val )
+
+    if a_type != type( b_val ):
+      raise ValueError( 'types do not match, "{0}" and "{1}" for "{2}"'.format( a_type.__name__, type( b_val ).__name__, name ) )
+
+    if a_type == list:
+      if sorted( a_val ) != sorted( b_val ):
+        result.append( name )
+
+    else:
+      if a_val != b_val:
+        result.append( name )
+
+  return result
 
 
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE', 'LIST', 'GET' ] )
@@ -46,19 +74,19 @@ class Loader( models.Model ):
 
     pprint( project )
 
-    site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
-    target_site_list = set( project.keys() )
+    local_site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
+    project_site_list = set( project.keys() )
 
     have_changes = False
 
-    for name in target_site_list - site_list:
-      change = Change( type='site', action='local_create', target_id=name )
+    for site_name in project_site_list - local_site_list:
+      change = Change( type='site', action='local_create', target_id=site_name )
       change.full_clean()
       change.save()
       have_changes = True
 
-    for name in site_list - target_site_list:
-      change = Change( type='site', action='local_delete', target_id=name )
+    for site_name in local_site_list - project_site_list:
+      change = Change( type='site', action='local_delete', target_id=site_name )
       change.full_clean()
       change.save()
       have_changes = True
@@ -68,14 +96,15 @@ class Loader( models.Model ):
 
     remote_site_list = set( contractor.getSiteList() )
 
-    for name in site_list - remote_site_list:
-      change = Change( type='site', action='remote_create', target_id=name, target_val={ 'description': project[ name ][ 'description' ] } )
+    for site_name in local_site_list - remote_site_list:
+      project_site = project[ site_name ]
+      change = Change( type='site', action='remote_create', target_id=site_name, target_val={ 'description': project_site[ 'description' ], 'config_values': project_site[ 'config_values' ] } )
       change.full_clean()
       change.save()
       have_changes = True
 
-    for name in remote_site_list - site_list:
-      change = Change( type='site', action='remote_delete', target_id=name )
+    for site_name in remote_site_list - local_site_list:
+      change = Change( type='site', action='remote_delete', target_id=site_name )
       change.full_clean()
       change.save()
       have_changes = True
@@ -83,52 +112,107 @@ class Loader( models.Model ):
     if have_changes:
       return 'Remote Site Changes'
 
-    for name in site_list:
-      site = Site.objects.get( name=name )
+    dirty = False
+    for site_name in project_site_list:
+      site = Site.objects.get( name=site_name )
 
       hasher = hashlib.sha1()
-      hasher.update( str( project[ name ] ).encode() )
+      hasher.update( str( project[ site_name ] ).encode() )
       current_hash = hasher.hexdigest()
       if site.last_load_hash == current_hash:
         continue
 
-      dirty = False
+      site_dirty = False
 
       # first compare site values
-      csite = contractor.getSite( name )
-      psite = project[ name ]
-      pprint( csite )
+      project_site = project[ site_name ]
+      remote_site = contractor.getSite( site_name )
+
+      print( '***' )
       pprint( site )
-      pprint( psite )
+      print( '----' )
+      pprint( project_site )
+      print( '===' )
 
-      change_list = []
-      for i in ( 'description', 'config_values', ):
-        if csite[ i ] != psite[ i ]:
-          change_list.append( i )
-
+      # update site details
+      change_list = _compare( remote_site, project_site, ( 'description', 'config_values' ) )
       if change_list:
-        change = Change( type='site', action='change', target_id=name, current_val=dict( [ ( i, csite[ i ] ) for i in change_list ] ), target_val=dict( [ ( i, psite[ i ] ) for i in change_list ] ) )
+        change = Change( type='site', action='change', target_id=site_name, current_val=dict( [ ( i, remote_site[ i ] ) for i in change_list ] ), target_val=dict( [ ( i, project_site[ i ] ) for i in change_list ] ) )
         change.full_clean()
         change.save()
-        dirty = True
+        site_dirty = True
 
       # second check address_blocks
-      # get from Contractor
-      address_block_list = set( AddressBlock.object.filter( site=site ).values_list( 'name', flat=True ) )
-      target_address_block_list = set( project[ site ][ 'address_block' ].keys() )
-      for name in target_address_block_list - address_block_list:  # TODO deal with removed address_blocks
-        address_block = project[ site ][ 'address_block' ][ name ]
-        change = Change( type='address_block', action='create', site=site, current_val=None, target_val=address_block )
-        change.full_clean()
-        change.save()
+      project_address_block_list = set( project_site[ 'address_block' ].keys() )
+      if not site_dirty:
+        # create/destroy the address blocks
+        remote_address_block_map = contractor.getAddressBlockMap( site_name )
+        remote_address_block_list = set( remote_address_block_map.keys() )
+        for block_name in project_address_block_list - remote_address_block_list:
+          address_block = project_site[ 'address_block' ][ block_name ]
+          change = Change( type='address_block', action='remote_create', site=site, target_id=block_name, target_val=address_block )
+          change.full_clean()
+          change.save()
+          site_dirty = True
+
+        for block_name in remote_address_block_list - project_address_block_list:
+          address_block = project_site[ 'address_block' ][ block_name ]
+          change = Change( type='address_block', action='remote_delete', site=site, target_id=block_name )
+          change.full_clean()
+          change.save()
+          site_dirty = True
+
+      if not site_dirty:
+        # update address block details
+        for block_name, remote_address_block in remote_address_block_map.items():
+          project_address_block = project_site[ 'address_block' ][ block_name ]
+          change_list = _compare( remote_address_block, project_address_block, ( 'subnet', 'prefix', 'gateway_offset', 'reserved_offset_list', 'dynamic_offset_list' ) )
+
+          if change_list:
+            change = Change( type='address_block', action='change', site=site, target_id=block_name,
+                             current_val=dict( [ ( i, list( remote_address_block[ i ] ) ) for i in change_list ] ),
+                             target_val=dict( [ ( i, project_address_block[ i ] ) for i in change_list ] ) )
+            change.full_clean()
+            change.save()
+            site_dirty = True
+
+      # third check instances
+      project_instance_list = set( project_site[ 'instance' ].keys() )
+      if not site_dirty:
+        # create/destroy instances
+        remote_instance_map = contractor.getInstanceMap( site_name )
+        remote_instance_list = set( remote_instance_map.keys() )
+
+        for instance_name in project_instance_list - remote_instance_list:
+          instance = project_site[ 'instance' ][ instance_name ]
+          change = Change( type='instance', action='remote_create', site=site, target_id=instance_name, target_val=instance )
+          change.full_clean()
+          change.save()
+          site_dirty = True
+
+        for instance_name in remote_instance_list - project_instance_list:
+          instance = project_site[ 'instance' ][ instance_name ]
+          change = Change( type='instance', action='remote_delete', site=site, target_id=instance_name )
+          change.full_clean()
+          change.save()
+          site_dirty = True
+
+      if not site_dirty:
+        # update instance details
+        for instance_name, remote_instance in remote_instance_map.items():
+          project_instance = project_site[ 'instance' ][ instance_name ]
+          change_list = _compare( remote_instance, project_instance, ( 'blueprint', 'type', 'address_list' ) )
+
+          if change_list:
+            change = Change( type='instance', action='change', site=site, target_id=instance_name,
+                             current_val=dict( [ ( i, remote_instance[ i ] ) for i in change_list ] ),
+                             target_val=dict( [ ( i, project_instance[ i ] ) for i in change_list ] ) )
+            change.full_clean()
+            change.save()
+            site_dirty = True
+
+      if site_dirty:
         dirty = True
-
-      # for name in project[ site ][ 'address_block' ]:
-      #   address_block = project[ site ][ 'address_block' ][ name ]
-
-      # update site with the results
-      if dirty:
-        have_changes = True
 
       else:
         site.last_load = datetime.now( timezone.utc )
@@ -136,7 +220,7 @@ class Loader( models.Model ):
         site.full_clean()
         site.save()
 
-    if have_changes:
+    if dirty:
       return 'Changes'
     else:
       return 'No Change'
@@ -152,7 +236,7 @@ class Loader( models.Model ):
 
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE' ] )
 class Change( models.Model ):
-  type = models.CharField( max_length=10, choices=zip( CHANGE_TYPE_CHOICES, CHANGE_TYPE_CHOICES ) )
+  type = models.CharField( max_length=13, choices=zip( CHANGE_TYPE_CHOICES, CHANGE_TYPE_CHOICES ) )
   action = models.CharField( max_length=13, choices=zip( CHANGE_ACTION_CHOICES, CHANGE_ACTION_CHOICES ) )
   site = models.ForeignKey( Site, blank=True, null=True, related_name='+' )
   target_id = models.CharField( max_length=50 )
@@ -177,7 +261,7 @@ class Change( models.Model ):
 
       elif self.action == 'remote_create':
         contractor = getContractor()
-        contractor.createSite( self.target_id, self.target_val[ 'description' ] )
+        contractor.createSite( self.target_id, **self.target_val )
 
         result = 'Site "{0}" added remotely'.format( self.target_id )
 
@@ -188,7 +272,42 @@ class Change( models.Model ):
         result = 'Site "{0}" updated fields: "{1}"'.format( self.target_id, '", "'.join( self.target_val.keys() ) )
 
       else:
-        raise ValueError( 'Unknown Action "{0}"'.format( self.action ) )
+        raise ValueError( 'Unknown Action "{0}" for site'.format( self.action ) )
+
+    elif self.type == 'address_block':
+      if self.action == 'remote_create':
+        contractor = getContractor()
+        contractor.createAddressBlock( self.site.name, self.target_id, **self.target_val )
+
+        result = 'Address Block "{0}" added remotely'.format( self.target_id )
+
+      elif self.action == 'change':
+        contractor = getContractor()
+        contractor.updateAddressBlock( self.target_id, **self.target_val )
+
+        result = 'Address Block "{0}" updated fields: "{1}"'.format( self.target_id, '", "'.join( self.target_val.keys() ) )
+
+      else:
+        raise ValueError( 'Unknown Action "{0}" for address_block'.format( self.action ) )
+
+    elif self.type == 'instance':
+      if self.action == 'remote_create':
+        contractor = getContractor()
+        contractor.createInstance( self.site.name, self.target_id, **self.target_val )
+
+        result = 'Instance "{0}" added remotely'.format( self.target_id )
+
+      elif self.action == 'change':
+        contractor = getContractor()
+        contractor.updateInstance( self.target_id, **self.target_val )
+
+        result = 'Instance "{0}" updated fields: "{1}"'.format( self.target_id, '", "'.join( self.target_val.keys() ) )
+
+      else:
+        raise ValueError( 'Unknown Action "{0}" for instance'.format( self.action ) )
+
+    else:
+      raise ValueError( 'Unknown Action "{0}"'.format( self.type ) )
 
     self.delete()
     return result
