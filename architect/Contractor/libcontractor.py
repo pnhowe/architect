@@ -119,9 +119,9 @@ class Contractor():
 
     return result
 
-  # Instance Functions
+  # Structure Functions - for these the Foundation is a part of the Structure as far as Contractor is concerened
   # for now we are going to assume these instances are created atominically with both foundation and structure, so pull the structures, that is what we are really after anyway
-  def getInstanceMap( self, site_id ):
+  def getStructureMap( self, site_id ):
     result = {}
     foundation_map = {}
     for uri, foundation in self.cinp.getFilteredObjects( '/api/v1/Building/Foundation', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
@@ -139,7 +139,7 @@ class Contractor():
 
     return result
 
-  def createInstance( self, site_id, name, **value_map ):
+  def createStructure( self, site_id, name, **value_map ):
     # def createFoundationStructure( self, foundation_type, site_id, blueprint, hostname, config_values, address_block_id, address_offest ):
     address = value_map[ 'address_list' ][0]
     data = {}
@@ -175,8 +175,12 @@ class Contractor():
 
     print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address ) )
 
-  def updateInstance( self, id, **value_map ):
+  def updateStructure( self, id, **value_map ):
     raise ValueError( 'Instance is not update-able' )
+
+  def deleteStructure( self, id ):
+    # TODO: submit deconfigure job, if one allready exists, raise ValueError
+    raise Exception( 'Not implemented yet' )
 
   # Complex functions
   def getComplexes( self ):
