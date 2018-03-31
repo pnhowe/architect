@@ -2,9 +2,6 @@ from pprint import pprint
 import hashlib
 from datetime import datetime, timezone
 
-from architect.Plan.models import Site
-
-
 def _compare( a, b, name_list ):
   result = []
   for name in name_list:
@@ -186,8 +183,8 @@ class ProjectComparer():
 
       if change_list:
         self.change_list.append( { 'type': 'structure', 'action': 'change', 'site': local_site, 'target_id': structure_name,
-                                    'current_val': dict( [ ( i, remote_structure i ] ) for i in change_list ] ),
-                                    'target_val': dict( [ ( i, project_structure[ i ] ) for i in change_list ] )
+                                   'current_val': dict( [ ( i, remote_structure[ i ] ) for i in change_list ] ),
+                                   'target_val': dict( [ ( i, project_structure[ i ] ) for i in change_list ] )
                                    } )
         dirty = True
 

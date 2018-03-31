@@ -6,8 +6,7 @@ from django.conf import settings
 from cinp.orm_django import DjangoCInP as CInP
 from django.core.exceptions import ValidationError
 
-from architect.Plan.models import Site
-from architect.fields import JSONField
+from architect.fields import MapField, JSONField, plan_name_regex
 
 from architect.Contractor.libcontractor import getContractor
 
@@ -21,6 +20,38 @@ cinp = CInP( 'Project', '0.1', doc="""This is the loader for the Project as a wh
 
 CHANGE_TYPE_CHOICES = ( 'site', 'address_block', 'structure' )
 CHANGE_ACTION_CHOICES = ( 'local_create', 'remote_create', 'local_delete', 'remote_delete', 'change' )
+
+
+@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
+class Site( models.Model ):
+  name = models.CharField( max_length=50, primary_key=True )
+  parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.CASCADE )
+  static_entry_map = MapField( blank=True )
+  address_block_map = MapField( blank=True )
+
+  last_load_hash = models.CharField( max_length=40 )  # sha1
+  last_load = models.DateTimeField()
+
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
+  def clean( self, *args, **kwargs ):
+    super().clean( *args, **kwargs )
+    errors = {}
+
+    if not plan_name_regex.match( self.name ):
+      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
+
+    if errors:
+      raise ValidationError( errors )
+
+  @cinp.check_auth()
+  @staticmethod
+  def checkAuth( user, verb, id_list, action=None ):
+    return True
+
+  def __str__( self ):
+    return 'Site "{0}"'.format( self.name )
 
 
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE', 'LIST', 'GET' ] )

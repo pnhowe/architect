@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
 
+from architect.Project.models import Site
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField, script_name_regex, plan_name_regex
@@ -16,86 +17,10 @@ Models that relate the Plans to BluePrints and TimeSeries data
 """ )
 
 
-@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
-class Site( models.Model ):
-  name = models.CharField( max_length=50, primary_key=True )
-  parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.CASCADE )
-  static_entry_map = MapField( blank=True )
-  address_block_map = MapField( blank=True )
-
-  last_load_hash = models.CharField( max_length=40 )  # sha1
-  last_load = models.DateTimeField()
-
-  updated = models.DateTimeField( auto_now=True )
-  created = models.DateTimeField( auto_now_add=True )
-
-  def clean( self, *args, **kwargs ):
-    super().clean( *args, **kwargs )
-    errors = {}
-
-    if not plan_name_regex.match( self.name ):
-      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
-
-    if errors:
-      raise ValidationError( errors )
-
-  @cinp.check_auth()
-  @staticmethod
-  def checkAuth( user, verb, id_list, action=None ):
-    return True
-
-  def __str__( self ):
-    return 'Site "{0}"'.format( self.name )
-
-
-@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
-class Plan( models.Model ):
-  site = models.OneToOneField( Site, primary_key=True )
-  description = models.CharField( max_length=200 )
-  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
-  change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
-  config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
-  last_change = models.DateTimeField( blank=True, null=True )
-  max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
-  updated = models.DateTimeField( auto_now=True )
-  created = models.DateTimeField( auto_now_add=True )
-
-  def clean( self, *args, **kwargs ):
-    super().clean( *args, **kwargs )
-    errors = {}
-
-    if errors:
-      raise ValidationError( errors )
-
-  @cinp.check_auth()
-  @staticmethod
-  def checkAuth( user, verb, id_list, action=None ):
-    return True
-
-  def __str__( self ):
-    return 'Plan "{0}"'.format( self.name )
-
-
-@cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
-class StaticPlan( Plan ):
-  plan = MapField()
-
-  def clean( self, *args, **kwargs ):
-    super().clean( *args, **kwargs )
-
-  @cinp.check_auth()
-  @staticmethod
-  def checkAuth( user, verb, id_list, action=None ):
-    return True
-
-  def __str__( self ):
-    return 'Static Plan "{0}"'.format( self.name )
-
-
 @cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'nonce_counter', 'last_change' ] )
-class DynamicPlan( Plan ):
+class Plan( models.Model ):
   """
-  Dynamic Deployment Plan.  We can source multiple data streams and build for multiple
+  Deployment Plan.  We can source multiple data streams and build for multiple
   BluePrints.  The values exported via the script (ie: the # values), will be matched
   to the Blueprint by matching the exported name to the BluePrint's name.  TimeSeries
   data (other than the TimmeSeries data from the Complex's attributes), are imported
@@ -111,19 +36,31 @@ class DynamicPlan( Plan ):
   slots_per_complex -> NOTE: changing this value can cause a lot of Instances to be
   created/destroyed/moved.
   """
+
+  site = models.OneToOneField( Site, primary_key=True )
+  description = models.CharField( max_length=200 )
+  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
+  change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
+  config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
+  last_change = models.DateTimeField( blank=True, null=True )
+  max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
+
   hostname_pattern = models.CharField( max_length=100, default='{plan}-{blueprint}-{nonce}' )
   script = models.TextField()
-  complex_list = models.ManyToManyField( Complex, through='DynamicPlanComplex' )
-  blueprint_list = models.ManyToManyField( BluePrint, through='DynamicPlanBluePrint' )
-  timeseries_list = models.ManyToManyField( RawTimeSeries, through='DynamicPlanTimeSeries' )
+  complex_list = models.ManyToManyField( Complex, through='PlanComplex' )
+  blueprint_list = models.ManyToManyField( BluePrint, through='PlanBluePrint' )
+  timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
   slots_per_complex = models.IntegerField( default=100 )
   nonce_counter = models.IntegerField( default=1 )  # is hashed (with other stuff) to be used as the nonce string, https://stackoverflow.com/questions/4567089/hash-function-that-produces-short-hashes
   can_move = models.BooleanField( default=False )
   can_destroy = models.BooleanField( default=False )
   can_build = models.BooleanField( default=True )
 
+  updated = models.DateTimeField( auto_now=True )
+  created = models.DateTimeField( auto_now_add=True )
+
   def nextNonce( self ):
-    plan = DynamicPlan.objects.select_for_update().get( name=self.name )
+    plan = Plan.objects.select_for_update().get( name=self.name )
     counter = plan.nonce_counter
     plan.nonce_counter += 1
     plan.save()
@@ -158,15 +95,15 @@ class DynamicPlan( Plan ):
     return True
 
   def __str__( self ):
-    return 'Dynamic Plan "{0}"'.format( self.name )
+    return 'Plan "{0}"'.format( self.name )
 
 
 @cinp.model( not_allowed_verb_list=[] )
-class DynamicPlanComplex( models.Model ):
+class PlanComplex( models.Model ):
   """
-  Attaches a Dynamic Plan to a Complex.
+  Attaches a Plan to a Complex.
   """
-  plan = models.ForeignKey( DynamicPlan, on_delete=models.CASCADE )
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
   cost = models.ForeignKey( CostTS, related_name='+', on_delete=models.PROTECT )  # 0 -> large value
   availability = models.ForeignKey( AvailabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
@@ -186,15 +123,15 @@ class DynamicPlanComplex( models.Model ):
 
     return result
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.DynamicPlan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
   @staticmethod
   def filter_plan( plan ):
-    return DynamicPlanComplex.objects.filter( plan=plan )
+    return PlanComplex.objects.filter( plan=plan )
 
   @cinp.list_filter( name='complex', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.Complex' } ] )
   @staticmethod
   def filter_complex( plan ):
-    return DynamicPlanComplex.objects.filter( complex=complex )
+    return PlanComplex.objects.filter( complex=complex )
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -208,18 +145,18 @@ class DynamicPlanComplex( models.Model ):
     return True
 
   def __str__( self ):
-    return 'DynamicPlanComplex for DynamicPlan "{0}" to "{1}"'.format( self.plan, self.complex )
+    return 'PlanComplex for Plan "{0}" to "{1}"'.format( self.plan, self.complex )
 
   class Meta:
     unique_together = ( ( 'plan', 'complex' ), )
 
 
 @cinp.model( not_allowed_verb_list=[ 'CALL' ] )
-class DynamicPlanBluePrint( models.Model ):
+class PlanBluePrint( models.Model ):
   """
-  Attaches a DynamicPlan to a BluePrint
+  Attaches a Plan to a BluePrint
   """
-  plan = models.ForeignKey( DynamicPlan, on_delete=models.CASCADE )
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT  )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -233,15 +170,15 @@ class DynamicPlanBluePrint( models.Model ):
     if errors:
       raise ValidationError( errors )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.DynamicPlan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
   @staticmethod
   def filter_plan( plan ):
-    return DynamicPlanBluePrint.objects.filter( plan=plan )
+    return PlanBluePrint.objects.filter( plan=plan )
 
   @cinp.list_filter( name='blueprint', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.BluePrint' } ] )
   @staticmethod
   def filter_blueprint( blueprint ):
-    return DynamicPlanBluePrint.objects.filter( blueprint=blueprint )
+    return PlanBluePrint.objects.filter( blueprint=blueprint )
 
   @cinp.check_auth()
   @staticmethod
@@ -249,20 +186,20 @@ class DynamicPlanBluePrint( models.Model ):
     return True
 
   def __str__( self ):
-    return 'DynamicPlanBluePrint for DynamicPlan "{0}" to "{1}" '.format( self.plan, self.blueprint.name )
+    return 'PlanBluePrint for Plan "{0}" to "{1}" '.format( self.plan, self.blueprint.name )
 
   class Meta:
     unique_together = ( ( 'plan', 'blueprint' ), )
 
 
 @cinp.model( not_allowed_verb_list=[ 'CALL' ] )
-class DynamicPlanTimeSeries( models.Model ):
+class PlanTimeSeries( models.Model ):
   """
-  Attaches a DynamicPlan to a TimeSeries values (this is not the Cost/Availablilty/Reliability)
+  Attaches a Plan to a TimeSeries values (this is not the Cost/Availablilty/Reliability)
   values for a complex.  Can be pretty much any value, will apear in the Plan's
   Script with as the variable @<script_name>
   """
-  plan = models.ForeignKey( DynamicPlan, on_delete=models.CASCADE )
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   timeseries = models.ForeignKey( RawTimeSeries, related_name='+', on_delete=models.PROTECT )
   script_name = models.CharField( max_length=50 )
   updated = models.DateTimeField( auto_now=True )
@@ -277,15 +214,15 @@ class DynamicPlanTimeSeries( models.Model ):
     if errors:
       raise ValidationError( errors )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.DynamicPlan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
   @staticmethod
   def filter_plan( plan ):
-    return DynamicPlanTimeSeries.objects.filter( plan=plan )
+    return PlanTimeSeries.objects.filter( plan=plan )
 
   @cinp.list_filter( name='timeseries', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.TimeSeries.models.RawTimeSeries' } ] )
   @staticmethod
   def filter_timeseries( timeseries ):
-    return DynamicPlanTimeSeries.objects.filter( timeseries=timeseries )
+    return PlanTimeSeries.objects.filter( timeseries=timeseries )
 
   @cinp.check_auth()
   @staticmethod
@@ -293,7 +230,7 @@ class DynamicPlanTimeSeries( models.Model ):
     return True
 
   def __str__( self ):
-    return 'DynamicPlanTimeSeries for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.timeseries, self.script_name )
+    return 'PlanTimeSeries for Plan "{0}" to "{1}" with name "{2}"'.format( self.plan, self.timeseries, self.script_name )
 
   class Meta:
     unique_together = ( ( 'plan', 'timeseries' ), )
