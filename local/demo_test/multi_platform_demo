@@ -52,6 +52,11 @@ demo: weighted( *INDEX*, @count, ( 1 / *COST* ) )
   pb.full_clean()
   pb.save()
 
+  blueprint = BluePrint.objects.get( name='demo-ssh' )
+  pb = PlanBluePrint( plan=plan, blueprint=blueprint )
+  pb.full_clean()
+  pb.save()
+
 print( 'Giving Complexes their tsnames, and setting up buckets...')
 for complex in Complex.objects.filter( tsname__isnull=True ):
   complex.tsname = complex.contractor_id

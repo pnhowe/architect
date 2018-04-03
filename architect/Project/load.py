@@ -6,7 +6,7 @@ import re
 
 hostname_regex = re.compile( '^[a-z0-9][a-z0-9\-]*[a-z0-9]$' )
 name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
-item_list = ( 'address_block', 'instance', 'complex' )
+item_list = ( 'address_block', 'structure', 'complex', 'plan' )
 
 
 def _sub_load( filepath, paramater_map ):
@@ -90,6 +90,12 @@ def loadProject( project_path ):
 
   return result
 
+SITE_PATTERN = {
+                 'description': str,
+                 'parent': ( str, None ),
+                 'config_values': ( dict, {} )
+               }
+
 ADDRESSBLOCK_PATTERN = {
                         'subnet': str,
                         'prefix': int,
@@ -99,12 +105,12 @@ ADDRESSBLOCK_PATTERN = {
                        }
 
 
-INSTANCE_PATTERN = {
+STRUCTURE_PATTERN = {
                       'address_list': [ { 'address_block': str, 'offset': int } ],
                       'type': str
                    }
 
-INSTANCE_PATTERN_MAP = {
+STRUCTURE_PATTERN_MAP = {
                           'Manual': { 'blueprint': str },
                           'AMT': { 'blueprint': str, 'amt_interface': { 'mac': str, 'offset': int } },
                           'Vcenter': { 'blueprint': str, 'complex': str },
@@ -113,8 +119,25 @@ INSTANCE_PATTERN_MAP = {
 
 COMPLEX_PATTERN = {
                     'type': str,
-                    'member_list': [ str ],
+                    'description': str,
+                    'built_percentage': ( int, None ),
+                    'member_list': [ str ]
                   }
+
+PLAN_PATTERN = {
+                 'description': str,
+                 'script': str,
+                 'timeseries_map': dict,
+                 'enabled': ( bool, None ),
+                 'change_cooldown': ( int, None ),
+                 'config_values': ( dict, {} ),
+                 'max_inflight': ( int, None ),
+                 'hostname_pattern': ( str, None ),
+                 'slots_per_complex': ( int, None ),
+                 'can_move': ( bool, None ),
+                 'can_destroy': ( bool, None ),
+                 'can_build': ( bool, None )
+               }
 
 
 def _validate_item( location, item, pattern ):
@@ -128,12 +151,23 @@ def _validate_item( location, item, pattern ):
   if itype != rtype:
     raise ValueError( '"{0}", is the wrong type, expected "{1}", got "{2}"'.format( location, rtype.__name__, itype.__name__ ) )
 
+  if isinstance( pattern, type ):  # the pattern dosen't have any children to iterate into
+    return
+
   if rtype == dict:
     for name, sub_pattern in pattern.items():
-      try:
-        _validate_item( '{0}.{1}'.format( location, name ), item[ name ], sub_pattern )
-      except KeyError:
-        raise ValueError( '"{0}" missing from "{1}"'.format( name, location ) )
+      if isinstance( sub_pattern, tuple ):
+        try:
+          _validate_item( '{0}.{1}'.format( location, name ), item[ name ], sub_pattern[0] )
+        except KeyError:
+          if sub_pattern[1] is not None:
+            item[ name ] = sub_pattern[1]
+
+      else:
+        try:
+          _validate_item( '{0}.{1}'.format( location, name ), item[ name ], sub_pattern )
+        except KeyError:
+          raise ValueError( '"{0}" missing from "{1}"'.format( name, location ) )
 
   elif rtype == list:
     for row in item:
@@ -145,18 +179,26 @@ def validateProject( config ):
     if not name_regex.match( site ):
       raise ValueError( 'Invalid Site Name "{0}"'.format( site ) )
 
+    _validate_item( 'site.{0}'.format( site ), config[ site ], SITE_PATTERN )
+
     for uid in config[ site ][ 'address_block' ]:
       _validate_item( 'address_block.{0}.{1}'.format( site, uid ), config[ site ][ 'address_block' ][ uid ], ADDRESSBLOCK_PATTERN )
 
-    for hostname in config[ site ][ 'instance' ]:
+    for hostname in config[ site ][ 'structure' ]:
       if not hostname_regex.match( hostname ):
         raise ValueError( 'Invalid hostname "{0}" in "{1}"'.format( hostname, site ) )
 
-      _validate_item( 'instance.{0}.{1}'.format( site, hostname ), config[ site ][ 'instance' ][ hostname ], INSTANCE_PATTERN )
+      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), config[ site ][ 'structure' ][ hostname ], STRUCTURE_PATTERN )
 
       try:
-        ftype = config[ site ][ 'instance' ][ hostname ][ 'type' ]
+        ftype = config[ site ][ 'structure' ][ hostname ][ 'type' ]
       except KeyError:
-        raise ValueError( 'Instance "{0}" in "{1}" missing type'.format( hostname, site ) )
+        raise ValueError( 'structure "{0}" in "{1}" missing type'.format( hostname, site ) )
 
-      _validate_item( 'instance.{0}.{1}'.format( site, hostname ), config[ site ][ 'instance' ][ hostname ], INSTANCE_PATTERN_MAP[ ftype ] )
+      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), config[ site ][ 'structure' ][ hostname ], STRUCTURE_PATTERN_MAP[ ftype ] )
+
+    for name in config[ site ][ 'complex' ]:
+      _validate_item( 'complex.{0}.{1}'.format( site, name ), config[ site ][ 'complex' ][ name ], COMPLEX_PATTERN )
+
+    for name in config[ site ][ 'plan' ]:
+      _validate_item( 'plan.{0}.{1}'.format( site, name ), config[ site ][ 'plan' ][ name ], PLAN_PATTERN )

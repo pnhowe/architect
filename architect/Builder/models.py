@@ -10,7 +10,7 @@ from architect.fields import JSONField
 from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan
 
-from architect.Contractor.libcontractor import getContractor
+from architect.Contractor.Contractor import getContractor
 
 cinp = CInP( 'Builder', '0.1', doc="""This is where the Instances genenerated
 from the plan, as well as the models to support the handeling of the Instances

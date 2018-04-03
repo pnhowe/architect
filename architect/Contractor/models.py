@@ -14,23 +14,17 @@ cinp = CInP( 'Contractor', '0.1' )
 
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'CALL' ] )
 class Complex( models.Model ):   # TODO: ReadOnly from API
-  contractor_id = models.CharField( max_length=40, unique=True, blank=True, null=True )
-  site_id = models.CharField( max_length=40 )  # NOTE: for now this is set when created, but not updated, hopfully ccomplexes don't move sites much
-  tsname = models.CharField( max_length=50, unique=True, blank=True, null=True )
+  name = models.CharField( max_length=40, primary_key=True )  # also the id on contractor
+  site = models.ForeignKey( 'Project.Site' )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
-    if not self.tsname:
-      self.tsname = None
-
-    if not self.contractor_id:
-      self.contractor_id = None
 
     errors = {}
-    if self.tsname is not None and not name_regex.match( self.tsname ):
-      errors[ 'tsname' ] = '"{0}" is invalid'.format( self.tsname )
+    if self.name is not None and not name_regex.match( self.name ):
+      errors[ 'name' ] = '"{0}" is invalid'.format( self.name )
 
     if errors:
       raise ValidationError( errors )
@@ -41,7 +35,7 @@ class Complex( models.Model ):   # TODO: ReadOnly from API
     return True
 
   def __str__( self ):
-    return 'Complex, contractor: "{0}" tsname: "{1}"'.format( self.contractor_id, self.tsname )
+    return 'Complex, "{0}" in'.format( self.name, self.site_id )
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )

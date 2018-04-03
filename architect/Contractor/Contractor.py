@@ -1,16 +1,22 @@
-from cinp.client import CInP
+from cinp import client
 
 from django.conf import settings
 
 
+CONTRACTOR_API_VERSION = '0.9'
+
+
 def getContractor():
-  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_ROOT_PATH, settings.CONTRACTOR_PORT, settings.CONTRACTOR_PROXY )
+  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_PORT, settings.CONTRACTOR_PROXY )
 
 
 class Contractor():
-  def __init__( self, host, root_path, port, proxy=None ):
+  def __init__( self, host, port, proxy=None ):
     super().__init__()
-    self.cinp = CInP( host, root_path, port )
+    self.cinp = client.CInP( host, '/api/v1', port )
+    root = self.cinp.describe( '/api/v1' )[0]
+    if root[ 'api-version' ] != CONTRACTOR_API_VERSION:
+      raise Exception( 'Expected API version "{0}" found "{1}"'.format( CONTRACTOR_API_VERSION, root[ 'api-version' ] ) )
 
   # Site functions
   def getSiteList( self ):
@@ -18,7 +24,12 @@ class Contractor():
 
   def createSite( self, name, **value_map ):
     data = { 'name': name }
-    for name in ( 'description', 'config_values' ):
+    try:
+      value_map[ 'parent' ] = '/api/v1/Site/Site:{0}:'.format( value_map[ 'parent' ] )
+    except KeyError:
+      pass
+
+    for name in ( 'description', 'config_values', 'parent' ):
       try:
         data[ name ] = value_map[ name ]
       except KeyError:
@@ -27,11 +38,20 @@ class Contractor():
     self.cinp.create( '/api/v1/Site/Site', data )
 
   def getSite( self, id ):
-    return self.cinp.get( '/api/v1/Site/Site:{0}:'.format( id ) )
+    result = self.cinp.get( '/api/v1/Site/Site:{0}:'.format( id ) )
+    if result[ 'parent' ] is not None:
+      result[ 'parent' ] = result[ 'parent' ].split( ':' )[1]
+
+    return result
 
   def updateSite( self, id, **value_map ):
+    try:
+      value_map[ 'parent' ] = '/api/v1/Site/Site:{0}:'.format( value_map[ 'parent' ] )
+    except KeyError:
+      pass
+
     data = {}
-    for name in ( 'description', 'config_values' ):
+    for name in ( 'description', 'config_values', 'parent' ):  # do we really want to allow switching parent?
       try:
         data[ name ] = value_map[ name ]
       except KeyError:
@@ -61,6 +81,9 @@ class Contractor():
       except KeyError:
         pass
 
+    # data[ 'reserved_offset_list' ] = value_map[ 'reserved_offset_list' ]  # for now we will let the up comming update set the reserved_offset_list
+    # data[ 'dynamic_offset_list' ] = value_map[ 'dynamic_offset_list' ]  # for now we will let the up comming update set the dynamic_offset_list
+
     self.cinp.create( '/api/v1/Utilities/AddressBlock', data )
 
   def updateAddressBlock( self, id, **value_map ):
@@ -73,7 +96,7 @@ class Contractor():
         pass
 
     if data:
-      self.cinp.update( '/api/v1/Utilities/AddressBlock:{0}:'.format( id ), data )
+      self.cinp.update( uri, data )
 
     reserved_offset_list = value_map.get( 'reserved_offset_list', None )
     dynamic_offset_list = value_map.get( 'dynamic_offset_list', None )
@@ -99,7 +122,7 @@ class Contractor():
         data = { 'address_block': uri, 'offset': offset }
         self.cinp.create( '/api/v1/Utilities/DynamicAddress', data )
 
-      for offset in dynamic_offset_list - current:
+      for offset in current - dynamic_offset_list:
         self.cinp.delete( current_map[ offset ] )
 
   def deleteAddressBlock( self, id ):
@@ -120,34 +143,32 @@ class Contractor():
     return result
 
   # Structure Functions - for these the Foundation is a part of the Structure as far as Contractor is concerened
-  # for now we are going to assume these instances are created atominically with both foundation and structure, so pull the structures, that is what we are really after anyway
+  # for now we are going to assume these instances are created atomically with both foundation and structure, so pull the structures, that is what we are really after anyway
   def getStructureMap( self, site_id ):
     result = {}
     foundation_map = {}
-    for uri, foundation in self.cinp.getFilteredObjects( '/api/v1/Building/Foundation', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
-      foundation_map[ uri ] = foundation
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Foundation', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
+      foundation_map[ uri ] = item
 
-    for uri, structure in self.cinp.getFilteredObjects( '/api/v1/Building/Structure', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Structure', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
       address_list = list( self.cinp.getFilteredObjects( '/api/v1/Utilities/Address', 'structure', { 'structure': uri } ) )
-      print( address_list )
-      foundation = foundation_map[ structure[ 'foundation' ] ]
+      foundation = foundation_map[ item[ 'foundation' ] ]
       tmp = {}
       tmp[ 'type' ] = foundation[ 'type' ]
-      tmp[ 'blueprint' ] = structure[ 'blueprint' ].split( ':' )[1]
+      tmp[ 'blueprint' ] = item[ 'blueprint' ].split( ':' )[1]
       tmp[ 'address_list' ] = [ { 'address_block': i[1][ 'address_block' ].split( ':' )[1], 'offset': i[1][ 'offset' ] } for i in address_list ]
-      result[ structure[ 'hostname' ] ] = tmp
+      result[ item[ 'hostname' ] ] = tmp
 
     return result
 
   def createStructure( self, site_id, name, **value_map ):
-    # def createFoundationStructure( self, foundation_type, site_id, blueprint, hostname, config_values, address_block_id, address_offest ):
-    address = value_map[ 'address_list' ][0]
+    address_list = value_map[ 'address_list' ]
     data = {}
     data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
     data[ 'locator' ] = name
     if value_map[ 'type' ] == 'Manual':
       data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:generic-manual:'
-      foundation = self.cinp.create( '/api/v1/Manual/ManualFoundation'.format( complex ), data )[0]
+      foundation = self.cinp.create( '/api/v1/Manual/ManualFoundation', data )[0]
 
     else:
       raise ValueError( 'Unknown foundation type "{0}"'.format( value_map[ 'type' ] ) )
@@ -164,16 +185,20 @@ class Contractor():
     structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
     structure_id = self.cinp.uri.extractIds( structure )[0]
 
-    data = {}
-    data[ 'networked' ] = '/api/v1/Utilities/Networked:{0}:'.format( structure_id )
-    data[ 'address_block' ] = '/api/v1/Utilities/AddressBlock:{0}:'.format( address[ 'address_block' ] )
-    data[ 'offset' ] = address[ 'offset' ]
-    data[ 'interface_name' ] = 'eth0'
-    data[ 'vlan' ] = 0
-    data[ 'is_primary' ] = True
-    address = self.cinp.create( '/api/v1/Utilities/Address', data )[0]
+    address_id_list = []
+    is_primary = True
+    for address in address_list:
+      data = {}
+      data[ 'networked' ] = '/api/v1/Utilities/Networked:{0}:'.format( structure_id )
+      data[ 'address_block' ] = '/api/v1/Utilities/AddressBlock:{0}:'.format( address[ 'address_block' ] )
+      data[ 'offset' ] = address[ 'offset' ]
+      data[ 'interface_name' ] = 'eth0'
+      data[ 'vlan' ] = 0
+      data[ 'is_primary' ] = is_primary
+      address_id_list.append( self.cinp.create( '/api/v1/Utilities/Address', data )[0] )
+      is_primary = False
 
-    print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address ) )
+    print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address_id_list ) )
 
   def updateStructure( self, id, **value_map ):
     raise ValueError( 'Instance is not update-able' )
@@ -183,21 +208,77 @@ class Contractor():
     raise Exception( 'Not implemented yet' )
 
   # Complex functions
-  def getComplexes( self ):
-    for ( id, complex ) in self.cinp.getFilteredObjects( '/api/v1/Building/Complex' ):
-      if complex[ 'state' ] != 'built':
-        continue
+  #
+  # def getComplex( self, id ):
+  #   complex = self.cinp.get( '/api/v1/Building/Complex:{0}:'.format( id ) )
+  #   complex[ 'site' ] = self.cinp.uri.extractIds( complex[ 'site' ] )[0]
+  #   return complex
 
-      yield self.cinp.uri.extractIds( id )[0]
+  def getComplexMap( self, site_id ):
+    result = {}
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Complex', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
+      item[ 'member_list' ] = self.cinp.uri.extractIds( list( i[1][ 'foundation' ] for i in self.cinp.getFilteredObjects( '/api/v1/Building/Structure', 'complex', { 'complex': uri } ) ) )
+      result[ item[ 'name' ] ] = item
 
+    return result
+
+  def createComplex( self, site_id, name, **value_map ):
+    data = { 'name': name, 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) }
+    for name in ( 'description', 'built_percentage' ):
+      try:
+        data[ name ] = value_map[ name ]
+      except KeyError:
+        pass
+
+    # data[ 'member_list' ] = value_map[ 'member_list' ]  # for now we will let the up comming update set the member_list
+
+    if value_map[ 'type' ] == 'Manual':
+      self.cinp.create( '/api/v1/Manual/ManualComplex', data )
+
+    else:
+      raise ValueError( 'Unknown foundation type "{0}"'.format( value_map[ 'type' ] ) )
+
+  def updateComplex( self, id, **value_map ):
+    uri = '/api/v1/Building/Complex:{0}:'.format( id )
+    data = {}
+    for name in ( 'description', 'built_percentage' ):
+      try:
+        data[ name ] = value_map[ name ]
+      except KeyError:
+        pass
+
+    if data:
+      self.cinp.update( uri, data )
+
+    member_list = value_map.get( 'member_list', None )
+
+    if member_list is not None:
+      member_list = set( member_list )
+      current_map = self.getComplexMembers( uri )
+      current = set( current_map.keys() )
+
+      for member in member_list - current:
+        # This is a bit of a hack to find the structure by looking up the foundation by the name, which *SHOULD* match the locator, there should be a better way
+        foundation = self.cinp.get( '/api/v1/Building/Foundation:{0}:'.format( member ) )
+        structure = foundation[ 'structure' ]
+        data = { 'complex': uri, 'structure': structure }
+        self.cinp.create( '/api/v1/Building/ComplexStructure', data )
+
+      for member in current - member_list:
+         self.cinp.delete( current_map[ member ] )
+
+  def getComplexMembers( self, uri ):
+    result = {}
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/ComplexStructure', 'complex', { 'complex': uri } ):
+      result[ item[ 'member' ].split( ':', 2 ) ] = uri
+
+    return result
+
+  # functions used by contractor sync
   def getBluePrints( self ):
     return self.cinp.getFilteredURIs( '/api/v1/BluePrint/StructureBluePrint' )
 
-  def getComplex( self, id ):
-    complex = self.cinp.get( '/api/v1/Building/Complex:{0}:'.format( id ) )
-    complex[ 'site' ] = self.cinp.uri.extractIds( complex[ 'site' ] )[0]
-    return complex
-
+  # functions for the dynamic building from Plans
   def createComplexFoundation( self, complex, blueprint, hostname ):
     foundation = self.cinp.call( '/api/v1/Building/Complex:{0}:(createFoundation)'.format( complex ), { 'hostname': hostname } )
     print( '************************ created "{0}"'.format( foundation ) )

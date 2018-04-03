@@ -9,7 +9,7 @@ django.setup()
 from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import DynamicPlanBluePrint
 from architect.Builder.models import Instance
-from architect.Contractor.libcontractor import getContractor
+from architect.Contractor.Contractor import getContractor
 
 contractor = getContractor()
 

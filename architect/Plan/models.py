@@ -37,7 +37,8 @@ class Plan( models.Model ):
   created/destroyed/moved.
   """
 
-  site = models.OneToOneField( Site, primary_key=True )
+  name = models.TextField( max_length=200, primary_key=True )
+  site = models.ForeignKey( Site, on_delete=models.CASCADE )
   description = models.CharField( max_length=200 )
   enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )

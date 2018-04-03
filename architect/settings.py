@@ -26,9 +26,9 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
     'architect.User',
-    'architect.TimeSeries',
-    'architect.Contractor',
     'architect.Project',
+    'architect.Contractor',
+    'architect.TimeSeries',
     'architect.Plan',
     'architect.Builder',
     'architect.Inspector',

@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 
 from architect.fields import MapField, JSONField, plan_name_regex
 
-from architect.Contractor.libcontractor import getContractor
+from architect.Contractor.Contractor import getContractor
 
 from architect.Project.load import loadProject, validateProject
 from architect.Project.compare import ProjectComparer
@@ -18,13 +18,13 @@ from architect.Project.apply import applyChange
 cinp = CInP( 'Project', '0.1', doc="""This is the loader for the Project as a whole
 """ )
 
-CHANGE_TYPE_CHOICES = ( 'site', 'address_block', 'structure' )
+CHANGE_TYPE_CHOICES = ( 'site', 'address_block', 'structure', 'complex', 'plan' )
 CHANGE_ACTION_CHOICES = ( 'local_create', 'remote_create', 'local_delete', 'remote_delete', 'change' )
 
 
 @cinp.model( not_allowed_verb_list=[ 'CALL' ], read_only_list=[ 'last_change' ] )
 class Site( models.Model ):
-  name = models.CharField( max_length=50, primary_key=True )
+  name = models.CharField( max_length=50, primary_key=True )  # also the id on Contractor
   parent = models.ForeignKey( 'self', null=True, blank=True, on_delete=models.CASCADE )
   static_entry_map = MapField( blank=True )
   address_block_map = MapField( blank=True )
@@ -101,12 +101,15 @@ class Change( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
-  @cinp.action( return_type='String' )
+  @cinp.action( return_type='Map' )
   def apply( self ):
+    if self.id > Change.objects.all().order_by( 'pk' )[0].id:
+      raise ValueError( 'Can only apply the first change' )
+
     result = applyChange( self )
 
     self.delete()
-    return result
+    return { 'result': result }
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -128,3 +131,6 @@ class Change( models.Model ):
   @staticmethod
   def checkAuth( user, verb, id_list, action=None ):
     return True
+
+  class Meta:
+    ordering = [ 'pk' ]
