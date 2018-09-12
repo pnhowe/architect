@@ -7,14 +7,14 @@ CONTRACTOR_API_VERSION = '0.9'
 
 
 def getContractor():
-  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_PORT, settings.CONTRACTOR_PROXY )
+  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_PROXY )
 
 
 class Contractor():
-  def __init__( self, host, port, proxy=None ):
+  def __init__( self, host, proxy=None ):
     super().__init__()
-    self.cinp = client.CInP( host, '/api/v1', port )
-    root = self.cinp.describe( '/api/v1' )[0]
+    self.cinp = client.CInP( host, '/api/v1/', proxy )
+    root = self.cinp.describe( '/api/v1/' )
     if root[ 'api-version' ] != CONTRACTOR_API_VERSION:
       raise Exception( 'Expected API version "{0}" found "{1}"'.format( CONTRACTOR_API_VERSION, root[ 'api-version' ] ) )
 
@@ -167,7 +167,7 @@ class Contractor():
     data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
     data[ 'locator' ] = name
     if value_map[ 'type' ] == 'Manual':
-      data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:generic-manual:'
+      data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:manual-foundation-base:'
       foundation = self.cinp.create( '/api/v1/Manual/ManualFoundation', data )[0]
 
     else:

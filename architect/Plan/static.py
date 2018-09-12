@@ -1,6 +1,7 @@
 
 from architect.Builder.models import Instance
 
+this is all dead?
 
 def caculateChangePlanStatic( plan ):
   result = []

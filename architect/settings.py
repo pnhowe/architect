@@ -7,9 +7,8 @@ GRAPHITE_HTTP_PORT = 80
 OPENTSD_HOST = '127.0.0.1'
 OPENTSD_PORT = 4242
 
-CONTRACTOR_HOST = 'http://127.0.0.1'
+CONTRACTOR_HOST = 'http://127.0.0.1:8888'
 CONTRACTOR_ROOT_PATH = '/api/v1/'
-CONTRACTOR_PORT = 8888
 CONTRACTOR_PROXY = None
 
 PROJECT_PATH = '/home/peter/Projects/t3kton/architect/local/demo_test/auto_demo_load/'
