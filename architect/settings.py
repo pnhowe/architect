@@ -11,7 +11,7 @@ CONTRACTOR_HOST = 'http://127.0.0.1:8888'
 CONTRACTOR_ROOT_PATH = '/api/v1/'
 CONTRACTOR_PROXY = None
 
-PROJECT_PATH = '/home/peter/Projects/t3kton/architect/local/demo_test/auto_demo_load/'
+PROJECT_PATH = '/home/peter/Projects/t3kton/architect/lib/demo_test/auto_demo_load/'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '@(a3yjcc(d3uxt)c7n(0vdfhe!$%u2(dvk^9^cg26+4wmih6l7'
