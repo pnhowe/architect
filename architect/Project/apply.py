@@ -104,7 +104,7 @@ def applyChange( change ):
 
       result = 'Plan "{0}" added locally'.format( change.target_id )
 
-    if change.action == 'change':
+    elif change.action == 'change':
       plan = Plan.objects.get( site=change.site, name=change.target_id )
 
       for key, value in change.target_val.items():

@@ -260,7 +260,7 @@ class Contractor():
       for member in member_list - current:
         # This is a bit of a hack to find the structure by looking up the foundation by the name, which *SHOULD* match the locator, there should be a better way
         foundation = self.cinp.get( '/api/v1/Building/Foundation:{0}:'.format( member ) )
-        structure = foundation[ 'structure' ]
+        structure = foundation[ 'attached_structure' ]
         data = { 'complex': uri, 'structure': structure }
         self.cinp.create( '/api/v1/Building/ComplexStructure', data )
 
