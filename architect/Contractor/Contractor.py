@@ -157,6 +157,7 @@ class Contractor():
       tmp[ 'type' ] = foundation[ 'type' ]
       tmp[ 'blueprint' ] = item[ 'blueprint' ].split( ':' )[1]
       tmp[ 'address_list' ] = [ { 'address_block': i[1][ 'address_block' ].split( ':' )[1], 'offset': i[1][ 'offset' ] } for i in address_list ]
+      tmp[ 'config_values' ] = item[ 'config_values' ]
       result[ item[ 'hostname' ] ] = tmp
 
     return result
@@ -201,7 +202,20 @@ class Contractor():
     print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address_id_list ) )
 
   def updateStructure( self, id, **value_map ):
-    raise ValueError( 'Instance is not update-able' )
+    if list( value_map.keys() ) != [ 'config_values' ]:
+      raise ValueError( 'Only config_values of Instance are update-able' )
+
+    structure_data = {}
+    for name in ( 'config_values', ):
+      try:
+        structure_data[ name ] = value_map[ name ]
+      except KeyError:
+        pass
+
+    if structure_data:
+      foundation = self.cinp.get( '/api/v1/Building/Foundation:{0}:'.format( id ) )
+
+      self.cinp.update( foundation[ 'attached_structure' ], structure_data )
 
   def deleteStructure( self, id ):
     # TODO: submit deconfigure job, if one allready exists, raise ValueError

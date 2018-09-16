@@ -6,8 +6,8 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
-from architect.Contractor.models import Complex, BluePrint
-from architect.Plan.models import DynamicPlanBluePrint
+from architect.Contractor.models import BluePrint
+from architect.Plan.models import PlanBluePrint
 from architect.Builder.models import Instance
 from architect.Contractor.Contractor import getContractor
 
@@ -15,7 +15,7 @@ contractor = getContractor()
 
 print( 'Checking Blueprint usage' )
 
-used_blueprints = set( DynamicPlanBluePrint.objects.all().value_list( 'blueprint', flat=True ) )
+used_blueprints = set( PlanBluePrint.objects.all().value_list( 'blueprint', flat=True ) )
 used_blueprints += set( Instance.objects.all().value_list( 'blueprint', flat=True ) )
 all_blueprints = set( BluePrint.objects.all().values_list( 'name', flat=True ) )
 
@@ -24,34 +24,6 @@ for pk in list( all_blueprints - used_blueprints ):
   blueprint.name = None
   blueprint.full_clean()
   blueprint.save()
-
-print( 'Getting master Complex lists...' )
-
-master_list = set( list( contractor.getComplexes() ) )
-local_list = set( Complex.objects.filter( contractor_id__isnull=False ).values_list( 'contractor_id', flat=True ) )
-
-remove_list = list( local_list - master_list )
-add_list = list( master_list - local_list )
-
-for contractor_id in add_list:
-  print( 'Adding "{0}"...'.format( contractor_id ) )
-  details = contractor.getComplex( contractor_id )
-  complex = Complex( contractor_id=contractor_id, site_id=details[ 'site' ] )
-  complex.full_clean()
-  complex.save()
-
-for contractor_id in remove_list:
-  complex = Complex.objects.get( contractor_id=contractor_id )
-  if complex.tsname is None:   # not attached to anything can just remove
-    print( 'Deleting "{0}"...'.format( contractor_id ) )
-    complex.delete()
-
-  else:
-    print( 'Disabeling "{0}"...'.format( contractor_id ) )
-    complex.contractor_id = None
-    complex.full_clean()
-    complex.save()
-
 
 print( 'Getting master BluePrint lists...' )
 

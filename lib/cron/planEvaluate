@@ -10,23 +10,22 @@ from datetime import datetime, timedelta, timezone
 
 from django.db.models import Count
 
-from architect.Plan.models import DynamicPlan, StaticPlan
+from architect.Plan.models import Plan
 from architect.Builder.models import Instance
 
-from architect.Plan.dynamic import caculateCounts, caculateChangePlan
-from architect.Plan.static import caculateChangePlanStatic
+from architect.Plan.caculate import caculateCounts, caculateChangePlan
 from architect.Builder.lib import cleanUp, applyChanges
 
 
 CLEANUP_DESTROYED_AFFTER = 3600  # in seconds
 
 # IMPORTANT!!!! this dosen't have any locking, only one cron process at a time
-# Also: this really need through testing, make sure to  test when there are jobs/Actions inflight
+# Also: this really need through testing, make sure to test when there are jobs/Actions inflight
 
 cleanUp( CLEANUP_DESTROYED_AFFTER )
 
-for plan in DynamicPlan.objects.filter( enabled=True ):
-  print( 'doing dynamic plan "{0}"...'.format( plan ) )
+for plan in Plan.objects.filter( enabled=True ):
+  print( 'Doing Plan "{0}"...'.format( plan ) )
 
   if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
     print( 'still hot, skipping...' )
@@ -59,26 +58,6 @@ for plan in DynamicPlan.objects.filter( enabled=True ):
   print( target_map )
 
   change_list = caculateChangePlan( plan, complex_name_list, target_map, current_map )
-  print( change_list )
-
-  if not change_list:
-    continue
-
-  plan.last_change = datetime.now( timezone.utc )
-  plan.full_clean()
-  plan.save()
-
-  applyChanges( plan, change_list )
-
-
-for plan in StaticPlan.objects.filter( enabled=True ):
-  print( 'doing static plan "{0}"...'.format( plan ) )
-
-  if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
-    print( 'still hot, skipping...' )
-    continue
-
-  change_list = caculateChangePlanStatic( plan )
   print( change_list )
 
   if not change_list:

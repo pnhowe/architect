@@ -35,7 +35,7 @@ class Complex( models.Model ):   # TODO: ReadOnly from API
     return True
 
   def __str__( self ):
-    return 'Complex, "{0}" in'.format( self.name, self.site_id )
+    return 'Complex "{0}" in "{1}"'.format( self.name, self.site_id )
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
@@ -66,4 +66,4 @@ class BluePrint( models.Model ):   # TODO: ReadOnly from API
     return True
 
   def __str__( self ):
-    return 'BluePrint, contractor: "{0}" name: "{1}"'.format( self.contractor_id, self.name )
+    return 'BluePrint "{0}" name: "{1}"'.format( self.contractor_id, self.name )

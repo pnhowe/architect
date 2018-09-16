@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('enabled', models.BooleanField(default=False)),
                 ('change_cooldown', models.IntegerField(help_text='number of seconds to wait after a change before re-evaluating the plan', default=300)),
                 ('config_values', architect.fields.MapField(help_text="Contracor style config values, which are loaded into Contractor's Structure model when the Structure is created", blank=True, default={})),
-                ('last_change', models.DateTimeField(null=True, blank=True)),
+                ('last_change', models.DateTimeField(auto_now_add=True)),
                 ('max_inflight', models.IntegerField(help_text='number of things that can be changing at the same time', default=2)),
                 ('hostname_pattern', models.CharField(max_length=100, default='{plan}-{blueprint}-{nonce}')),
                 ('script', models.TextField()),

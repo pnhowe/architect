@@ -177,7 +177,7 @@ class ProjectComparer():
     # update structure details
     for structure_name, remote_structure in remote_structure_map.items():
       project_structure = project_site[ 'structure' ][ structure_name ]
-      change_list = _compare( remote_structure, project_structure, ( 'blueprint', 'type', 'address_list' ) )
+      change_list = _compare( remote_structure, project_structure, ( 'blueprint', 'type', 'address_list', 'config_values' ) )
 
       if change_list:
         self.change_list.append( { 'type': 'structure', 'action': 'change', 'site': local_site, 'target_id': structure_name,

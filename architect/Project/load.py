@@ -107,7 +107,8 @@ ADDRESSBLOCK_PATTERN = {
 
 STRUCTURE_PATTERN = {
                       'address_list': [ { 'address_block': str, 'offset': int } ],
-                      'type': str
+                      'type': str,
+                      'config_values': ( dict, None )
                    }
 
 STRUCTURE_PATTERN_MAP = {
