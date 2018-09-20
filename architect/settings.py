@@ -25,10 +25,10 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
     'architect.User',
-    'architect.Project',
+    'architect.Plan',
     'architect.Contractor',
     'architect.TimeSeries',
-    'architect.Plan',
+    'architect.Project',
     'architect.Builder',
     'architect.Inspector',
     'django.contrib.admin',

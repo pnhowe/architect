@@ -128,6 +128,7 @@ COMPLEX_PATTERN = {
 PLAN_PATTERN = {
                  'description': str,
                  'script': str,
+                 'complex_list': ( list, [] ),
                  'timeseries_map': dict,
                  'enabled': ( bool, None ),
                  'change_cooldown': ( int, None ),

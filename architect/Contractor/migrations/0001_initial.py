@@ -14,9 +14,9 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='BluePrint',
             fields=[
-                ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True, serialize=False)),
-                ('contractor_id', models.CharField(max_length=40, null=True, unique=True, blank=True)),
-                ('name', models.CharField(max_length=50, null=True, unique=True, blank=True)),
+                ('id', models.AutoField(primary_key=True, serialize=False, verbose_name='ID', auto_created=True)),
+                ('contractor_id', models.CharField(blank=True, max_length=40, unique=True, null=True)),
+                ('name', models.CharField(blank=True, max_length=50, unique=True, null=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Complex',
             fields=[
-                ('name', models.CharField(max_length=40, primary_key=True, serialize=False)),
+                ('name', models.CharField(primary_key=True, max_length=40, serialize=False)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('site', models.ForeignKey(to='Project.Site')),

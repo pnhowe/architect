@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from cinp.orm_django import DjangoCInP as CInP
 
 from architect.Project.models import Site
-from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
+from architect.TimeSeries.models import RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField, script_name_regex, plan_name_regex
 from architect.tcalc.parser import lint
@@ -106,23 +106,8 @@ class PlanComplex( models.Model ):
   """
   plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
-  cost = models.ForeignKey( CostTS, related_name='+', on_delete=models.PROTECT )  # 0 -> large value
-  availability = models.ForeignKey( AvailabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
-  reliability = models.ForeignKey( ReliabilityTS, related_name='+', on_delete=models.PROTECT )  # 0.0 -> 1.0
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
-
-  @cinp.action( return_type={ 'type': 'Map' }, paramater_type_list=[ { 'type': 'Integer', 'doc': 'number of seconds of data to retreieve' } ] )
-  def graph_data( self, duration=3600 ):
-    result = { 'graph': {}, 'value': {} }
-    result[ 'graph' ][ 'cost' ] = self.cost.graph_data( duration )
-    result[ 'graph' ][ 'availability' ] = self.availability.graph_data( duration )
-    result[ 'graph' ][ 'reliability' ] = self.reliability.graph_data( duration )
-    result[ 'value' ][ 'cost' ] = self.cost.last_value
-    result[ 'value' ][ 'availability' ] = self.availability.last_value
-    result[ 'value' ][ 'reliability' ] = self.reliability.last_value
-
-    return result
 
   @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
   @staticmethod

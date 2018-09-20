@@ -19,6 +19,18 @@ class Complex( models.Model ):   # TODO: ReadOnly from API
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
+  @cinp.action( return_type={ 'type': 'Map' }, paramater_type_list=[ { 'type': 'Integer', 'doc': 'number of seconds of data to retreieve' } ] )
+  def graph_data( self, duration=3600 ):
+    result = { 'graph': {}, 'value': {} }
+    result[ 'graph' ][ 'cost' ] = self.cost.graph_data( duration )  # TODO: catch missing ts reccord
+    result[ 'value' ][ 'cost' ] = self.cost.last_value
+    result[ 'graph' ][ 'availability' ] = self.availability.graph_data( duration )
+    result[ 'value' ][ 'availability' ] = self.availability.last_value
+    result[ 'graph' ][ 'reliability' ] = self.reliability.graph_data( duration )
+    result[ 'value' ][ 'reliability' ] = self.reliability.last_value
+
+    return result
+
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
 

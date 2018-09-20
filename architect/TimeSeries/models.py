@@ -73,16 +73,25 @@ class RawTimeSeries( TimeSeries ):
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
-class CostTS( TimeSeries ):
+class CostTS( TimeSeries ):  # 0 -> large value
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    return getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), duration, None )
+    for i in range( 0, len( value_list ) ):
+      if value_list[ i ] < 0:
+        value_list[ i ] = 0
+
+    return value_list
 
   @property
   def last_value( self ):
-    return getTS().get_last( 'complex.{0}.cost'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.cost'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    if value < 0:
+      return 0
+
+    return value
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -103,16 +112,29 @@ class CostTS( TimeSeries ):
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
-class AvailabilityTS( TimeSeries ):
+class AvailabilityTS( TimeSeries ):  # 0.0 -> 1.0
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    return getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), duration, None )
+    for i in range( 0, len( value_list ) ):
+      if value_list[ i ] < 0:
+        value_list[ i ] = 0
+      if value_list[ i ] > 1:
+        value_list[ i ] = 1
+
+    return value_list
 
   @property
   def last_value( self ):
-    return getTS().get_last( 'complex.{0}.availability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.availability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    if value < 0:
+      return 0
+    if value > 1:
+      return 1
+
+    return value
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
@@ -133,16 +155,29 @@ class AvailabilityTS( TimeSeries ):
 
 
 @cinp.model( not_allowed_verb_list=[ 'UPDATE', 'DELETE', 'CREATE', 'CALL' ] )
-class ReliabilityTS( TimeSeries ):
+class ReliabilityTS( TimeSeries ):  # 0.0 -> 1.0
   complex = models.OneToOneField( Complex, on_delete=models.CASCADE )
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    return getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), duration, None )
+    for i in range( 0, len( value_list ) ):
+      if value_list[ i ] < 0:
+        value_list[ i ] = 0
+      if value_list[ i ] > 1:
+        value_list[ i ] = 1
+
+    return value_list
 
   @property
   def last_value( self ):
-    return getTS().get_last( 'complex.{0}.reliability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.reliability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    if value < 0:
+      return 0
+    if value > 1:
+      return 1
+
+    return value
 
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )

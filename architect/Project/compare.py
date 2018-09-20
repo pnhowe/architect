@@ -260,14 +260,20 @@ class ProjectComparer():
     # update plan details
     for plan_name in project_plan_list:
       project_plan = project_site[ 'plan' ][ plan_name ]
-      local_plan = Plan.objects.get( name=plan_name )
+      local_plan_obj = Plan.objects.get( name=plan_name )
+
+      local_plan = local_plan_obj.__dict__
+      local_plan[ 'complex_list' ] = []
+      for complex in local_plan_obj.complex_list.all():
+        local_plan[ 'complex_list' ].append( complex.name )
+
       pprint( project_plan )
       pprint( local_plan )
 
-      change_list = _compare( local_plan.__dict__, project_plan, ( 'description', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
+      change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
       if change_list:
         self.change_list.append( { 'type': 'plan', 'action': 'change', 'site': local_site, 'target_id': plan_name,
-                                   'current_val': dict( [ ( i, getattr( local_plan, i ) ) for i in change_list ] ),
+                                   'current_val': dict( [ ( i, local_plan[ i ] ) for i in change_list ] ),
                                    'target_val': dict( [ ( i, project_plan[ i ] ) for i in change_list ] )
                                    } )
         dirty = True
