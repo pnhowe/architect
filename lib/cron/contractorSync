@@ -15,12 +15,13 @@ contractor = getContractor()
 
 print( 'Checking Blueprint usage' )
 
-used_blueprints = set( PlanBluePrint.objects.all().value_list( 'blueprint', flat=True ) )
-used_blueprints += set( Instance.objects.all().value_list( 'blueprint', flat=True ) )
+used_blueprints = list( PlanBluePrint.objects.all().values_list( 'blueprint', flat=True ) )
+used_blueprints += list( Instance.objects.all().values_list( 'blueprint', flat=True ) )
+used_blueprints = set( used_blueprints )
 all_blueprints = set( BluePrint.objects.all().values_list( 'name', flat=True ) )
 
-for pk in list( all_blueprints - used_blueprints ):
-  blueprint = BluePrint.objects.get( pk=pk )
+for contractor_id in list( all_blueprints - used_blueprints ):
+  blueprint = BluePrint.objects.get( contractor_id=contractor_id )
   blueprint.name = None
   blueprint.full_clean()
   blueprint.save()
@@ -41,7 +42,7 @@ for contractor_id in add_list:
 
 for contractor_id in remove_list:
   blueprint = BluePrint.objects.get( contractor_id=contractor_id )
-  if blueprint.tsname is None:   # not attached to anything can just remove
+  if blueprint.name is None:   # not attached to anything can just remove
     print( 'Deleting "{0}"...'.format( contractor_id ) )
     blueprint.delete()
 
@@ -51,7 +52,7 @@ for contractor_id in remove_list:
     blueprint.full_clean()
     blueprint.save()
 
-# TODO: probalby need to re-thing the local bluprint names, for now only removing them for this script seems a bit silly
+# TODO: probalby need to re-think the local bluprint names, for now only removing them for this script seems a bit silly
 print( 'Enabeling Blueprints' )
 
 for blueprint in BluePrint.objects.filter( name__isnull=True ):

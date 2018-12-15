@@ -284,7 +284,7 @@ class Contractor():
   def getComplexMembers( self, uri ):
     result = {}
     for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/ComplexStructure', 'complex', { 'complex': uri } ):
-      result[ item[ 'member' ].split( ':', 2 ) ] = uri
+      result[ item[ 'structure' ].split( ':', 2 )[ 1 ] ] = uri
 
     return result
 

@@ -69,10 +69,10 @@ def applyChange( change ):
   elif change.type == 'complex':
     Complex = apps.get_model( 'Contractor', 'Complex' )
     if change.action == 'local_create':
-      cplx = Complex( name=change.target_id )
-      cplx.site = change.site
-      cplx.full_clean()
-      cplx.save()
+      complex = Complex( name=change.target_id )
+      complex.site = change.site
+      complex.full_clean()
+      complex.save()
 
       costts = CostTS( complex=complex )
       costts.save()
@@ -101,7 +101,11 @@ def applyChange( change ):
   elif change.type == 'plan':
     Plan = apps.get_model( 'Plan', 'Plan' )
     PlanComplex = apps.get_model( 'Plan', 'PlanComplex' )
+    PlanBluePrint = apps.get_model( 'Plan', 'PlanBluePrint' )
+    PlanTimeSeries = apps.get_model( 'Plan', 'PlanTimeSeries' )
     Complex = apps.get_model( 'Contractor', 'Complex' )
+    BluePrint = apps.get_model( 'Contractor', 'BluePrint' )
+    RawTimeSeries = apps.get_model( 'TimeSeries', 'RawTimeSeries' )
 
     if change.action == 'local_create':
       plan = Plan( name=change.target_id )
@@ -119,13 +123,37 @@ def applyChange( change ):
       complex_list = change.target_val.get( 'complex_list', [] )
       for complex_name in complex_list:
         try:
-          complex = Complex.objects.get( name=complex )
+          complex = Complex.objects.get( name=complex_name )
         except Complex.DoesNotExist:
           raise ValueError( 'Complex named "{0}" not found'.format( complex_name ) )
 
         plancomplex = PlanComplex( plan=plan, complex=complex )
         plancomplex.full_clean()
         plancomplex.save()
+
+      blueprint_list = change.target_val.get( 'blueprint_list', [] )
+      for blueprint_name in blueprint_list:
+        try:
+          blueprint = BluePrint.objects.get( name=blueprint_name )
+        except Complex.DoesNotExist:
+          raise ValueError( 'Blueprint named "{0}" not found'.format( blueprint_name ) )
+
+        planblueprint = PlanBluePrint( plan=plan, blueprint=blueprint )
+        planblueprint.full_clean()
+        planblueprint.save()
+
+      timeseries_map = change.target_val.get( 'timeseries_map', [] )
+      for script_name, timeseries_metric in timeseries_map.items():
+        try:
+          timeseries = RawTimeSeries.objects.get( metric=timeseries_metric )
+        except RawTimeSeries.DoesNotExist:
+          timeseries = RawTimeSeries( metric=timeseries_metric )
+          timeseries.full_clean()
+          timeseries.save()
+
+        plantimeseries = PlanTimeSeries( plan=plan, timeseries=timeseries, script_name=script_name )
+        plantimeseries.full_clean()
+        plantimeseries.save()
 
       result = 'Plan "{0}" added locally'.format( change.target_id )
 
@@ -141,25 +169,76 @@ def applyChange( change ):
       plan.full_clean()
       plan.save()
 
-      complex_list = set( change.target_val.get( 'complex_list', [] ) )
-      cur_complex_list = set( [ i.name for i in plan.complex_list.all() ] )
-      for complex_name in list( complex_list - cur_complex_list ):
-        try:
-          complex = Complex.objects.get( name=complex_name )
-        except Complex.DoesNotExist:
-          raise ValueError( 'Complex named "{0}" not found'.format( complex_name ) )
+      if 'complex_list' in change.target_val:
+        complex_list = set( change.target_val.get( 'complex_list', [] ) )
+        cur_complex_list = set( [ i.name for i in plan.complex_list.all() ] )
+        for complex_name in list( complex_list - cur_complex_list ):
+          try:
+            complex = Complex.objects.get( name=complex_name )
+          except Complex.DoesNotExist:
+            raise ValueError( 'Complex named "{0}" not found'.format( complex_name ) )
 
-        plancomplex = PlanComplex( plan=plan, complex=complex )
-        plancomplex.full_clean()
-        plancomplex.save()
+          plancomplex = PlanComplex( plan=plan, complex=complex )
+          plancomplex.full_clean()
+          plancomplex.save()
 
-      for complex_name in list( cur_complex_list - complex_list ):
-        try:
-          plancomplex = PlanComplex.objects.get( plan=plan, complex__name=complex_name )
-        except PlanComplex.DoesNotExist:
-          continue
+        for complex_name in list( cur_complex_list - complex_list ):
+          try:
+            plancomplex = PlanComplex.objects.get( plan=plan, complex__name=complex_name )
+          except PlanComplex.DoesNotExist:
+            continue
 
-        plancomplex.delete()
+          plancomplex.delete()
+
+      if 'blueprint_list' in change.target_val:
+        blueprint_list = set( change.target_val.get( 'blueprint_list', [] ) )
+        cur_blueprint_list = set( [ i.name for i in plan.blueprint_list.all() ] )
+        for blueprint_name in list( blueprint_list - cur_blueprint_list ):
+          try:
+            blueprint = BluePrint.objects.get( name=blueprint_name )
+          except Complex.DoesNotExist:
+            raise ValueError( 'Blueprint named "{0}" not found'.format( blueprint_name ) )
+
+          planblueprint = PlanBluePrint( plan=plan, blueprint=blueprint )
+          planblueprint.full_clean()
+          planblueprint.save()
+
+        for blueprint_name in list( cur_blueprint_list - blueprint_list ):
+          try:
+            planblueprint = PlanBluePrint.objects.get( plan=plan, blueprint_name=blueprint_name )
+          except PlanBluePrint.DoesNotExist:
+            continue
+
+          planblueprint.delete()
+
+      if 'timeseries_map' in change.target_val:
+        timeseries_map = change.target_val.get( 'timeseries_map', {} )
+        timeseries_list = set( timeseries_map.keys() )
+        cur_timeseries_map = {}
+        for timeseries in plan.timeseries_list.all():
+          cur_timeseries_map[ timeseries.script_name ] = timeseries.timeseries.name
+        cur_timeseries_list = set( cur_timeseries_map.keys() )  # TODO: compare metrics too
+
+        for script_name in list( timeseries_list - cur_timeseries_list ):
+          timeseries_metric = timeseries_map[ script_name ]
+          try:
+            timeseries = RawTimeSeries.objects.get( metric=timeseries_metric )
+          except RawTimeSeries.DoesNotExist:
+            timeseries = RawTimeSeries( metric=timeseries_metric )
+            timeseries.full_clean()
+            timeseries.save()
+
+          plantimeseries = PlanTimeSeries( plan=plan, timeseries=timeseries, script_name=script_name )
+          plantimeseries.full_clean()
+          plantimeseries.save()
+
+        for script_name in list( cur_timeseries_list - timeseries_list ):
+          try:
+            plantimeseries = RawTimeSeries.objects.get( plan=plan, script_name=script_name )
+          except RawTimeSeries.DoesNotExist:
+            continue
+
+          plantimeseries.delete()
 
       result = 'Plan "{0}" updated fields: "{1}"'.format( change.target_id, '", "'.join( change.target_val.keys() ) )
 

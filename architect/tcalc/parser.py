@@ -85,17 +85,21 @@ function_init_map = {
   linear_slots_{ID} = [ math.ceil( i * safe_div( _T_, {1} ) ) for i in range( 0, int( {1} ) ) ]
 """,
 
-                      'weighted': """
+                      'weighted_old': """
   import math
   global weighted_slots_{ID}
 
-  avg_weight = float( sum( {2} ) ) / len( {2} )
+  cost_list = {2}
+  avg_weight = float( sum( cost_list ) ) / len( cost_list )
+  #print( cost_list )
+  #print( avg_weight )
+
   counter = 0
   weighted_slots_{ID} = []
   for i in range( 0, int( {1} ) ):
     bucket = int( counter / SLOTS_PER_BUCKET )
     try:
-      interval = ( _T_ * ( avg_weight / {2}[ bucket ] ) ) / {1}
+      interval = ( _T_ * ( avg_weight / cost_list[ bucket ] ) ) / {1}
       interval = min( interval, SLOTS_PER_BUCKET )
     except ( ZeroDivisionError, TypeError ):
       interval = SLOTS_PER_BUCKET
@@ -104,10 +108,29 @@ function_init_map = {
       raise ValueError( 'interval drops below 1' )
 
     counter += interval
+    #print( i, counter, interval )
     if counter > _T_:
-      raise ValueError( 'Counter exceted total' )
+      if i == int( {1} ) - 1:
+        counter = _T_
+      else:
+        raise ValueError( 'Counter exceted total' )
 
-    weighted_slots_{ID}.append( math.ceil( counter ) )
+    weighted_slots_{ID}.append( math.floor( counter ) )
+
+  #print( weighted_slots_{ID} )
+  weighted_slots_{ID} = list( map( lambda i: i - 1, weighted_slots_{ID} ) )
+  #print( weighted_slots_{ID} )
+"""
+                      'weighted': """
+  global weighted_slots_{ID}
+
+  total_weight = sum( cost_list )
+  extra = 0
+  for i in range( 0, len( cost_list ) ):
+    share = cost_list[ i ] / total_weight
+    count = int( share )
+    error += share % 1
+
 """
 }
 
@@ -153,8 +176,10 @@ class Script():
   def setBuckets( self, slots_per_bucket, bucket_cost, bucket_availability, bucket_reliability ):
     if not isinstance( slots_per_bucket, int ) or slots_per_bucket < 1 or slots_per_bucket > 10000:
       raise ValueError( 'slots_per_bucket must be int and from 1 to 10000' )
+
     if not isinstance( bucket_cost, list ) or not isinstance( bucket_availability, list ) or not isinstance( bucket_reliability, list ):
       raise ValueError( 'bucket_cost, bucket_availability, and bucket_reliability must be list' )
+
     if len( bucket_cost ) != len( bucket_availability ) != len( bucket_reliability ) or len( bucket_cost ) < 1 or len( bucket_cost ) > 1000:
       raise ValueError( 'bucket_cost, bucket_availability, and bucket_reliability must be the same size, and length from 1 to 1000' )
 
@@ -167,6 +192,7 @@ class Script():
   def setTimeSeriesValues( self, ts_value_map ):
     if not isinstance( ts_value_map, dict ):
       raise ValueError( 'external_value_map must be a dict' )
+
     self.ts_value_map = ts_value_map
 
   def _evaluate( self, bucket, index ):
@@ -180,6 +206,7 @@ class Script():
   def evaluate( self ):
     if self.slots_per_bucket is None:
       raise ValueError( 'bucket info has not been set' )
+
     if self.ts_value_map is None:
       raise ValueError( 'timeseries values have not been set' )
 
@@ -267,7 +294,7 @@ def main( _I_, _T_, _C_, _A_, _R_, ts_map ):
   return b_map
 """
 
-    print( '*****************\n{0}\n*******************'.format( script ) )
+    # print( '*****************\n{0}\n*******************'.format( script ) )
 
     tmp = {}
     exec( compile( script, '<string>', 'exec' ), tmp )

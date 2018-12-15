@@ -27,7 +27,7 @@ class TimeSeries( models.Model ):
   def graph_data( self, duration ):
     return []
 
-  # Do not expose last_value to cinp as a property, this saves on some extra work when the data is not needed
+  # TODO: Do not expose last_value to cinp as a property, this saves on some extra work when the data is not needed
   @property
   def last_value( self ):
     return None
@@ -78,7 +78,7 @@ class CostTS( TimeSeries ):  # 0 -> large value
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    value_list = getTS().get( 'complex.{0}.cost'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.cost'.format( self.complex.name ), duration, None )
     for i in range( 0, len( value_list ) ):
       if value_list[ i ] < 0:
         value_list[ i ] = 0
@@ -87,7 +87,7 @@ class CostTS( TimeSeries ):  # 0 -> large value
 
   @property
   def last_value( self ):
-    value = getTS().get_last( 'complex.{0}.cost'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.cost'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
     if value < 0:
       return 0
 
@@ -96,8 +96,8 @@ class CostTS( TimeSeries ):  # 0 -> large value
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
     errors = {}
-    if self.complex.tsname is None:
-      errors[ 'complex' ] = 'can not use a complex without a tsname set.'
+    if self.complex.name is None:
+      errors[ 'complex' ] = 'can not use a complex without a name set.'
 
     if errors:
       raise ValidationError( errors )
@@ -117,7 +117,7 @@ class AvailabilityTS( TimeSeries ):  # 0.0 -> 1.0
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    value_list = getTS().get( 'complex.{0}.availability'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.availability'.format( self.complex.name ), duration, None )
     for i in range( 0, len( value_list ) ):
       if value_list[ i ] < 0:
         value_list[ i ] = 0
@@ -128,9 +128,10 @@ class AvailabilityTS( TimeSeries ):  # 0.0 -> 1.0
 
   @property
   def last_value( self ):
-    value = getTS().get_last( 'complex.{0}.availability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.availability'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
     if value < 0:
       return 0
+
     if value > 1:
       return 1
 
@@ -139,8 +140,8 @@ class AvailabilityTS( TimeSeries ):  # 0.0 -> 1.0
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
     errors = {}
-    if self.complex.tsname is None:
-      errors[ 'complex' ] = 'can not use a complex without a tsname set.'
+    if self.complex.name is None:
+      errors[ 'complex' ] = 'can not use a complex without a name set.'
 
     if errors:
       raise ValidationError( errors )
@@ -160,7 +161,7 @@ class ReliabilityTS( TimeSeries ):  # 0.0 -> 1.0
 
   def graph_data( self, duration ):
     duration = min( duration, MAX_GRAPH_DATA_DURATION )
-    value_list = getTS().get( 'complex.{0}.reliability'.format( self.complex.tsname ), duration, None )
+    value_list = getTS().get( 'complex.{0}.reliability'.format( self.complex.name ), duration, None )
     for i in range( 0, len( value_list ) ):
       if value_list[ i ] < 0:
         value_list[ i ] = 0
@@ -171,9 +172,10 @@ class ReliabilityTS( TimeSeries ):  # 0.0 -> 1.0
 
   @property
   def last_value( self ):
-    value = getTS().get_last( 'complex.{0}.reliability'.format( self.complex.tsname ), LAST_VALUE_MAX_AGE )
+    value = getTS().get_last( 'complex.{0}.reliability'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
     if value < 0:
       return 0
+
     if value > 1:
       return 1
 
@@ -182,8 +184,8 @@ class ReliabilityTS( TimeSeries ):  # 0.0 -> 1.0
   def clean( self, *args, **kwargs ):
     super().clean( *args, **kwargs )
     errors = {}
-    if self.complex.tsname is None:
-      errors[ 'complex' ] = 'can not use a complex without a tsname set.'
+    if self.complex.name is None:
+      errors[ 'complex' ] = 'can not use a complex without a name set.'
 
     if errors:
       raise ValidationError( errors )

@@ -9,7 +9,7 @@ django.setup()
 from architect.Plan.models import Plan
 from architect.Builder.models import Action, Job
 
-ORDER_OF_OPERATIONS = [ 'move', 'build', 'destroy', 'rebuild' ]
+ORDER_OF_OPERATIONS = ( 'move', 'build', 'destroy', 'rebuild' )
 
 print( 'Checking Plans...' )
 for plan in Plan.objects.all():

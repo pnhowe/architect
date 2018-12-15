@@ -9,9 +9,10 @@ django.setup()
 from datetime import datetime, timedelta, timezone
 
 from django.db.models import Count
+from django.core.exceptions import ObjectDoesNotExist
 
 from architect.Plan.models import Plan
-from architect.Builder.models import Instance
+from architect.Builder.models import ComplexInstance
 
 from architect.Plan.caculate import caculateCounts, caculateChangePlan
 from architect.Builder.lib import cleanUp, applyChanges
@@ -28,18 +29,23 @@ for plan in Plan.objects.filter( enabled=True ):
   print( 'Doing Plan "{0}"...'.format( plan ) )
 
   if plan.change_cooldown > 0 and plan.last_change > datetime.now( timezone.utc ) - timedelta( seconds=plan.change_cooldown ):
-    print( 'still hot, skipping...' )
+    print( 'Still Hot, skipping...' )
     continue
 
   complex_name_list = []
   complex_cost_list = []
   complex_availability_list = []
   complex_reliability_list = []
-  for pc in plan.plancomplex_set.all().order_by( 'id' ):  # Important the complexes are evaulated in a consistant order_by
-    complex_name_list.append( pc.complex.tsname )
-    complex_cost_list.append( pc.cost.last_value )
-    complex_availability_list.append( pc.availability.last_value )
-    complex_reliability_list.append( pc.reliability.last_value )
+  try:
+    for complex in plan.complex_list.all().order_by( 'name' ):  # Important the complexes are evaulated in a consistant order
+      complex_name_list.append( complex.name )
+      complex_cost_list.append( complex.costts.last_value )
+      complex_availability_list.append( complex.availabilityts.last_value )
+      complex_reliability_list.append( complex.reliabilityts.last_value )
+
+  except ( ObjectDoesNotExist, AttributeError ):
+    print( 'Complex is Missing Time Series Entries, skipping...' )
+    continue
 
   print( complex_name_list )
   print( complex_cost_list )
@@ -48,14 +54,15 @@ for plan in Plan.objects.filter( enabled=True ):
 
   target_map = caculateCounts( plan, complex_name_list, complex_cost_list, complex_availability_list, complex_reliability_list )
 
+  print( 'target' )
+  print( target_map )
+
   current_map = {}
   for blueprint_name in target_map.keys():
-    current_map[ blueprint_name ] = dict( ( i[ 'complex__tsname' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).exclude( state='destroyed' ).values( 'complex__tsname' ).annotate( count=Count( 'id' ) ) )
+    current_map[ blueprint_name ] = dict( ( i[ 'complex__name' ], i[ 'count' ] ) for i in ComplexInstance.objects.filter( plan=plan, blueprint__name=blueprint_name ).exclude( state='destroyed' ).values( 'complex__name' ).annotate( count=Count( 'id' ) ) )
 
   print( 'current' )
   print( current_map )
-  print( 'target' )
-  print( target_map )
 
   change_list = caculateChangePlan( plan, complex_name_list, target_map, current_map )
   print( change_list )

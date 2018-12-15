@@ -104,8 +104,8 @@ class PlanComplex( models.Model ):
   """
   Attaches a Plan to a Complex.
   """
-  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
-  complex = models.ForeignKey( Complex, on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
+  plan = models.ForeignKey( Plan, related_name='+', on_delete=models.CASCADE )
+  complex = models.ForeignKey( Complex, related_name='+', on_delete=models.PROTECT )  # deleting this will cause the indexing to get messed up, have to deal with that before deleting
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -142,8 +142,8 @@ class PlanBluePrint( models.Model ):
   """
   Attaches a Plan to a BluePrint
   """
-  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
-  blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT  )
+  plan = models.ForeignKey( Plan, related_name='+', on_delete=models.CASCADE )
+  blueprint = models.ForeignKey( BluePrint, related_name='+', on_delete=models.PROTECT  )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 

@@ -12,6 +12,8 @@ from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan, PlanComplex, PlanBluePrint
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS
 
+raise Exception( 'This is old' )
+
 import sys
 try:
   mode = sys.argv[1]
@@ -30,14 +32,6 @@ if mode == 'docker':
     blueprint = BluePrint( contractor_id=contractor_id )
     blueprint.full_clean()
     blueprint.save()
-
-
-print( 'Giving Complexes their tsnames...')
-for complex in Complex.objects.all():
-  if complex.contractor_id.startswith( 'cplx' ):
-    complex.tsname = complex.contractor_id
-    complex.full_clean()
-    complex.save()
 
 print( 'Giving Blueprints their names...')
 for blueprint in BluePrint.objects.all():
@@ -59,7 +53,7 @@ plan.full_clean()
 plan.save()
 
 print( 'Setting up complex buckets...' )
-for complex in Complex.objects.filter( tsname__isnull=False ):
+for complex in Complex.objects.filter( name__isnull=False ):
   costts = CostTS( complex=complex )
   costts.save()
   availts = AvailabilityTS( complex=complex )

@@ -4,6 +4,35 @@ from datetime import datetime, timezone
 from django.apps import apps
 
 
+def _compare_item( a, b, name ):
+  a_type = type( a )
+
+  if a is not None and a_type != type( b ):
+    raise ValueError( 'types do not match, "{0}" and "{1}" for "{2}"'.format( a_type.__name__, type( b ).__name__, name ) )
+
+  if a_type == list:
+    if len( a ) != len( b ):
+      return True
+
+    tmp_a = sorted( a, key=str )
+    tmp_b = sorted( b, key=str )
+    if [ 1 for i in range( 0, len( a ) ) if _compare_item( tmp_a[ i ], tmp_b[ i ], name ) ]:
+      return True
+
+  elif a_type == dict:
+    if set( a ) != set( b ):  # compare keys
+      return True
+
+    elif [ 1 for key in a.keys() if _compare_item( a[ key ], b[ key ], name ) ]:  # compare values
+      return True
+
+  else:
+    if a != b:
+      return True
+
+  return False
+
+
 def _compare( current, project, name_list ):
   result = []
   for name in name_list:
@@ -18,18 +47,8 @@ def _compare( current, project, name_list ):
       continue  # we can skip if it's not the project
       # raise ValueError( 'name "{0}" not found in project set'.format( name ) )
 
-    current_type = type( current_val )
-
-    if current_val is not None and current_type != type( project_val ):
-      raise ValueError( 'types do not match, "{0}" and "{1}" for "{2}"'.format( current_type.__name__, type( project_val ).__name__, name ) )
-
-    if current_type == list:
-      if sorted( [ '{0}'.format( i ) for i in current_val ] ) != sorted( [ '{0}'.format( i ) for i in project_val ] ):
-        result.append( name )
-
-    else:
-      if current_val != project_val:
-        result.append( name )
+    if _compare_item( current_val, project_val, name ):
+      result.append( name )
 
   return result
 
@@ -263,14 +282,17 @@ class ProjectComparer():
       local_plan_obj = Plan.objects.get( name=plan_name )
 
       local_plan = local_plan_obj.__dict__
-      local_plan[ 'complex_list' ] = []
-      for complex in local_plan_obj.complex_list.all():
-        local_plan[ 'complex_list' ].append( complex.name )
+      local_plan[ 'complex_list' ] = [ i.name for i in local_plan_obj.complex_list.all() ]
+      local_plan[ 'blueprint_list' ] = [ i.name for i in local_plan_obj.blueprint_list.all() ]
+
+      local_plan[ 'timeseries_map' ] = {}
+      for plantimeseries in local_plan_obj.plantimeseries_set.all():
+        local_plan[ 'timeseries_map' ][ plantimeseries.script_name ] = plantimeseries.timeseries.metric
 
       pprint( project_plan )
       pprint( local_plan )
 
-      change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
+      change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'blueprint_list', 'timeseries_map', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
       if change_list:
         self.change_list.append( { 'type': 'plan', 'action': 'change', 'site': local_site, 'target_id': plan_name,
                                    'current_val': dict( [ ( i, local_plan[ i ] ) for i in change_list ] ),
@@ -279,3 +301,5 @@ class ProjectComparer():
         dirty = True
 
     return dirty
+
+    # timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )

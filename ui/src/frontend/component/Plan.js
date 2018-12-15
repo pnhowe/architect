@@ -84,7 +84,7 @@ class Plan extends React.Component
                   <tr><th>Max Inflight</th><td>{ plan.max_inflight }</td></tr>
                   <tr><th>Last Change</th><td>{ plan.last_change }</td></tr>
                   <tr><th>Nonce Counter</th><td>{ plan.nonce_counter }</td></tr>
-                  <tr><th>Can Mode</th><td>{ plan.can_move }</td></tr>
+                  <tr><th>Can Move</th><td>{ plan.can_move }</td></tr>
                   <tr><th>Can Destroy</th><td>{ plan.can_destroy }</td></tr>
                   <tr><th>Can Build</th><td>{ plan.can_build }</td></tr>
                   <tr><th>Created</th><td>{ plan.created }</td></tr>

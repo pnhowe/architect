@@ -72,8 +72,8 @@ Same thing can be acomplished with::
 10 Items evenly distrubuted, with "AB" testing split at 30::
 
   items: liner( *INDEX*, 10 )
-  #version1: above_inclusive( liner, 30 )
-  #version2: below( liner, 30 )
+  #version1: above_inclusive( items, 30 )
+  #version2: below( items, 30 )
 
 Item every 40 slots, excepet where cost is more than 10::
 

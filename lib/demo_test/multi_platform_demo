@@ -12,6 +12,7 @@ from architect.Contractor.models import Complex, BluePrint
 from architect.Plan.models import Plan, PlanComplex, PlanBluePrint, PlanTimeSeries
 from architect.TimeSeries.models import CostTS, AvailabilityTS, ReliabilityTS, RawTimeSeries
 
+raise Exception( 'This is old' )
 
 print( 'Giving Blueprints their names...')
 for blueprint in BluePrint.objects.filter( name__isnull=True ):
