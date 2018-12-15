@@ -53,17 +53,51 @@ def test_weighted():
   f = parse( '#a: weighted( *INDEX*, 3, *COST* )' )
   f.setBuckets( 20, [ 0, 2, 1, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 19, 29, 39 ] }
+  assert f.evaluate() == { 'a': [ 20, 30, 40 ] }
 
   f = parse( '#a: weighted( *INDEX*, 3, *COST* )' )
   f.setBuckets( 20, [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 19, 39, 59 ] }
+  assert f.evaluate() == { 'a': [ 0, 27, 54 ] }
 
-  f = parse( '#a: weighted( *INDEX*, 5, *COST* )' )
-  f.setBuckets( 20, [ 0, 2, 1, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
+  f = parse( '#a: weighted( *INDEX*, 3, *COST* )' )
+  f.setBuckets( 20, [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 19, 25, 31, 37, 43 ] }
+  assert f.evaluate() == { 'a': [ 0, 20, 40 ] }
+
+  for count, target_list in (
+                   ( 1, [ 20 ] ),
+                   ( 2, [ 20, 40 ] ),
+                   ( 3, [ 20, 30, 40 ] ),
+                   ( 4, [ 20, 26, 33, 40 ] ),
+                   ( 5, [ 20, 26, 33, 40, 50 ] ),
+                   ( 6, [ 20, 25, 30, 35, 40, 50 ] ),
+                   ( 7, [ 20, 24, 28, 32, 36, 40, 50 ] ),
+                   ( 8, [ 20, 24, 28, 32, 36, 40, 46, 53 ] ),
+                   ( 9, [ 20, 23, 26, 30, 33, 36, 40, 46, 53 ] ),
+                   ( 10, [ 20, 22, 25, 28, 31, 34, 37, 40, 46, 53 ] ),
+                  ):
+    f = parse( '#a: weighted( *INDEX*, {0}, *COST* )'.format( count ) )
+    f.setBuckets( 20, [ 0, 2, 1, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
+    f.setTimeSeriesValues( {} )
+    assert f.evaluate() == { 'a': target_list }
+
+  for count, target_list in (
+                   ( 1, [ 40 ] ),
+                   ( 2, [ 20, 40 ] ),
+                   ( 3, [ 20, 40, 50 ] ),
+                   ( 4, [ 20, 30, 40, 50  ] ),
+                   ( 5, [ 20, 30, 40, 46, 53 ] ),
+                   ( 6, [ 20, 26, 33, 40, 46, 53 ] ),
+                   ( 7, [ 20, 26, 33, 40, 45, 50, 55 ] ),
+                   ( 8, [ 20, 25, 30, 35, 40, 45, 50, 55 ] ),
+                   ( 9, [ 20, 25, 30, 35, 40, 44, 48, 52, 56 ] ),
+                   ( 10, [ 20, 24, 28, 32, 36, 40, 44, 48, 52, 56 ] ),
+                  ):
+    f = parse( '#a: weighted( *INDEX*, {0}, *COST* )'.format( count ) )
+    f.setBuckets( 20, [ 0, 1, 1, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
+    f.setTimeSeriesValues( {} )
+    assert f.evaluate() == { 'a': target_list }
 
   f = parse( '#a: weighted( *INDEX*, 5, *COST* )' )
   f.setBuckets( 5, [ 10, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
@@ -73,7 +107,7 @@ def test_weighted():
   f = parse( '#a: weighted( *INDEX*, 5, *COST* )' )
   f.setBuckets( 10, [ 10, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 1, 3, 5, 7, 9 ] }
+  assert f.evaluate() == { 'a': [ 0, 2, 4, 6, 8 ] }
 
   f = parse( '#a: weighted( *INDEX*, 5, *COST* )' )
   f.setBuckets( 5, [ 0, 0, 0, 10 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
@@ -88,37 +122,37 @@ def test_weighted():
   f = parse( '#a: weighted( *INDEX*, 5, ( 1 / *COST* ) )' )
   f.setBuckets( 20, [ 0.1, 2, 1, 0.1 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 7, 16, 24, 44, 64 ] }
+  assert f.evaluate() == { 'a': [ 0, 10, 40, 60, 70 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, ( 1 / *COST* ) )' )
   f.setBuckets( 50, [ 2.0, 0.1 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 49, 54, 59, 64, 70, 75, 80, 85, 91, 96 ] }
+  assert f.evaluate() == { 'a': [ 50, 55, 60, 65, 70, 75, 80, 85, 90, 95 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, ( 1 / *COST* ) )' )
   f.setBuckets( 50, [ 0.1, 2.0 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 4, 9, 14, 20, 25, 30, 35, 41, 46, 51 ] }
+  assert f.evaluate() == { 'a': [ 0, 5, 10, 15, 20, 25, 30, 35, 40, 45 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, ( 1 / *COST* ) )' )
   f.setBuckets( 50, [ 1.0, 1.0 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 9, 19, 29, 39, 49, 59, 69, 79, 89, 99 ] }
+  assert f.evaluate() == { 'a': [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, ( 1 / *COST* ) )' )
   f.setBuckets( 50, [ 2.0, 1.0 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 14, 29, 44, 59, 66, 74, 81, 89, 96, 99 ] }
+  assert f.evaluate() == { 'a': [ 0, 16, 33, 50, 57, 64, 71, 78, 85, 92 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, *COST* )' )
   f.setBuckets( 50, [ 1000.0, 0.001 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 4, 9, 14, 19, 24, 29, 34, 39, 44, 49 ] }
+  assert f.evaluate() == { 'a': [ 0, 5, 10, 15, 20, 25, 30, 35, 40, 45 ] }
 
   f = parse( '#a: weighted( *INDEX*, 10, *COST* )' )
   f.setBuckets( 50, [ 0.001, 1000.0 ], [ 0, 0 ], [ 0, 0 ] )
   f.setTimeSeriesValues( {} )
-  assert f.evaluate() == { 'a': [ 49, 54, 59, 64, 69, 74, 79, 84, 89, 94 ] }
+  assert f.evaluate() == { 'a': [ 50, 55, 60, 65, 70, 75, 80, 85, 90, 95 ] }
 
 
 def test_above_below_functions():

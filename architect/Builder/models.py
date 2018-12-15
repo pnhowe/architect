@@ -182,12 +182,12 @@ class ComplexInstance( Instance ):
   def type( self ):
     return 'Complex'
 
-  @staticmethod
-  def create( plan, complex_name, blueprint_name ):
-    result = Instance( plan=plan, complex=Complex.objects.get( name=complex_name ), blueprint=BluePrint.objects.get( name=blueprint_name ) )
+  @classmethod
+  def create( cls, plan, complex_name, blueprint_name ):
+    result = cls( plan=plan, complex=Complex.objects.get( name=complex_name ), blueprint=BluePrint.objects.get( name=blueprint_name ) )
     result.state = 'new'
-    result.nonce = plan.dynamicplan.nextNonce()
-    result.hostname = plan.dynamicplan.hostname_pattern.format( **{ 'plan': plan.name, 'compex': complex_name, 'blueprint': blueprint_name, 'site': result.complex.site_id, 'nonce': result.nonce } )
+    result.nonce = plan.nextNonce()
+    result.hostname = plan.hostname_pattern.format( **{ 'plan': plan.name, 'compex': complex_name, 'blueprint': blueprint_name, 'site': result.complex.site_id, 'nonce': result.nonce } )
     result.full_clean()
     result.save()
     return result

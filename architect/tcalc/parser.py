@@ -85,7 +85,7 @@ function_init_map = {
   linear_slots_{ID} = [ math.ceil( i * safe_div( _T_, {1} ) ) for i in range( 0, int( {1} ) ) ]
 """,
 
-                      'weighted_old': """
+                      'weighted_': """
   import math
   global weighted_slots_{ID}
 
@@ -120,17 +120,46 @@ function_init_map = {
   #print( weighted_slots_{ID} )
   weighted_slots_{ID} = list( map( lambda i: i - 1, weighted_slots_{ID} ) )
   #print( weighted_slots_{ID} )
-"""
+""",
                       'weighted': """
+  import math
   global weighted_slots_{ID}
 
-  total_weight = sum( cost_list )
-  extra = 0
-  for i in range( 0, len( cost_list ) ):
-    share = cost_list[ i ] / total_weight
-    count = int( share )
-    error += share % 1
+  weight_list = {2}
+  total_weight = sum( weight_list )
+  if total_weight == 0.0:  # do linear
+    weighted_slots_{ID} = [ math.ceil( i * safe_div( _T_, {1} ) ) for i in range( 0, int( {1} ) ) ]
+    return
 
+  weighted_slots_{ID} = []
+  extra = 0
+  for i in range( 0, len( weight_list ) ):
+    if weight_list[ i ] == 0:
+      continue
+
+    share = ( weight_list[ i ] / total_weight ) * {1}
+    count = math.floor( share )
+    extra += share % 1  # roll forward any left over
+    additional = round( extra )
+    count += additional  # add whole extra to the count
+    extra -= additional  # keep rolling just the remainder forward
+    #print( '   ', i, share, count, extra )
+    if count > SLOTS_PER_BUCKET:
+      raise ValueError( 'count exceded slots per bucket' )
+
+    if count < 1:
+      continue
+
+    step_size = SLOTS_PER_BUCKET / count
+    #print( ' * ', count, step_size )
+    for j in range( 0, int( count ) ):
+      value = ( i * SLOTS_PER_BUCKET ) + math.floor( j * step_size )
+      #print( j, j * step_size, value )
+      if value > _T_:
+        raise ValueError( 'value exceeds total' )
+
+      weighted_slots_{ID}.append( value )
+  #print( '   =', extra )
 """
 }
 
