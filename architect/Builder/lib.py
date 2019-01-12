@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from architect.Builder.models import ComplexInstance, TypedInstance, Instance, Action
+from architect.Builder.models import Instance, Action
 
 
 def cleanUp( age ):
@@ -12,12 +12,7 @@ def cleanUp( age ):
 def applyChanges( plan, change_list ):
   for change in change_list:
     if change[0] == 'create':
-      if change[1] == 'complex':
-        instance = ComplexInstance.create( plan, *change[ 2: ] )
-      elif change[1] == 'typed':
-        instance = TypedInstance.create( plan, *change[ 2: ] )
-      else:
-        raise ValueError( 'Unknown instance type "{0}"'.format( change[1] ) )
+      instance = Instance.create( plan, *change[ 1: ] )
 
       Action.create( instance, 'build' )
       print( 'new instance "{0}"'.format( instance ) )
