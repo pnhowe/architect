@@ -314,7 +314,7 @@ class Contractor():
   def destroyFoundation( self, id ):
     self.cinp.call( '/api/v1/Building/Foundation:{0}:(doDestroy)'.format( id ), {} )
 
-  def createComplexStructure( self, site_id, foundation_id, blueprint, hostname, config_values ):
+  def createComplexStructure( self, site_id, foundation_id, blueprint, hostname, config_values, address_block_id ):
     data = {}
     data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
     data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
@@ -328,7 +328,7 @@ class Contractor():
     data[ 'structure' ] = structure
     data[ 'interface_name' ] = 'eth0'
     data[ 'is_primary' ] = True
-    address = self.cinp.call( '/api/v1/Utilities/AddressBlock:1:(nextAddress)', data )
+    address = self.cinp.call( '/api/v1/Utilities/AddressBlock:{0}:(nextAddress)'.format( address_block_id ), data )
     print( '************************  created "{0}({1})"'.format( structure, address ) )
 
     structure_id = self.cinp.uri.extractIds( structure )[0]

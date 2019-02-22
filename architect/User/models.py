@@ -4,13 +4,14 @@ import string
 from datetime import datetime, timedelta, timezone
 
 from django.db import models
+from django.contrib.auth.models import AnonymousUser
 
 from cinp.orm_django import DjangoCInP as CInP
 
 
 def getUser( auth_id, auth_token ):
   if auth_id is None or auth_token is None:
-    return None
+    return AnonymousUser()
 
   try:
     session = Session.objects.get( user=auth_id, token=auth_token )
@@ -24,6 +25,7 @@ def getUser( auth_id, auth_token ):
     return None
 
   return session.user
+
 
 
 # TODO: this has many security issues, spend some time and think this out better

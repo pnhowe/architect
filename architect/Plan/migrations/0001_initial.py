@@ -20,6 +20,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('name', models.TextField(serialize=False, primary_key=True, max_length=200)),
                 ('description', models.CharField(max_length=200)),
+                ('address_block', models.CharField(max_length=40)),
                 ('enabled', models.BooleanField(default=False)),
                 ('change_cooldown', models.IntegerField(help_text='number of seconds to wait after a change before re-evaluating the plan', default=300)),
                 ('config_values', architect.fields.MapField(help_text="Contracor style config values, which are loaded into Contractor's Structure model when the Structure is created", default={}, blank=True)),

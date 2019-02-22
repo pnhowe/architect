@@ -128,6 +128,7 @@ COMPLEX_PATTERN = {
 PLAN_PATTERN = {
                  'description': str,
                  'script': str,
+                 'address_block': str,
                  'complex_list': ( list, [] ),
                  'blueprint_list': ( list, [] ),
                  'timeseries_map': dict,

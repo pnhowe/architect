@@ -32,7 +32,7 @@ class Instance( models.Model ):
   hostname = models.CharField( max_length=200, unique=True )
   nonce = models.CharField( max_length=26, unique=True )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )
-  foundation_id = models.IntegerField( null=True, blank=True, unique=True )  # Contractor foundation id
+  foundation_id = models.CharField( max_length=100, blank=True, unique=True )  # Contractor foundation locator
   structure_id = models.IntegerField( null=True, blank=True, unique=True )  # Contractor structure id
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
@@ -121,20 +121,19 @@ class Action( models.Model ):
     action.save()
 
   def start( self ):
-    instance = self.instance.subclass
-    if self.action == 'build' and ( instance.foundation_id is None or instance.structure_id is None ):
+    if self.action == 'build' and ( self.instance.foundation_id is None or self.instance.structure_id is None ):
       contractor = getContractor()
-      if instance.foundation_id is None:
-        instance.foundation_id = contractor.createComplexFoundation( instance.complex.contractor_id, instance.blueprint.contractor_id, instance.hostname )
+      if self.instance.foundation_id is None:
+        self.instance.foundation_id = contractor.createComplexFoundation( self.instance.complex.name, self.instance.blueprint.contractor_id, self.instance.hostname )
 
-      if instance.structure_id is None:
-        instance.structure_id = contractor.createComplexStructure( instance.site_id, instance.foundation_id, instance.blueprint.contractor_id, instance.hostname, instance.plan.config_values, instance.address_block_id, instance.offset )
+      if self.instance.structure_id is None:
+        self.instance.structure_id = contractor.createComplexStructure( self.instance.plan.site.name, self.instance.foundation_id, self.instance.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values, self.instance.plan.address_block )
 
     print( "---------{0}--------".format( self.instance.pk ) )
 
-    instance.state = 'processing'
-    instance.full_clean()
-    instance.save()
+    self.instance.state = 'processing'
+    self.instance.full_clean()
+    self.instance.save()
 
     if self.action == 'build':
       self.state[ 'todo' ] = [ ( 'build', 'foundation' ), ( 'build', 'structure' ) ]

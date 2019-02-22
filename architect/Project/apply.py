@@ -111,7 +111,7 @@ def applyChange( change ):
       plan = Plan( name=change.target_id )
       plan.site = change.site
 
-      for key in ( 'description', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ):
+      for key in ( 'description', 'address_block', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ):
         try:
           setattr( plan, key, change.target_val[ key ] )
         except KeyError:
