@@ -7,8 +7,8 @@ from cinp.orm_django import DjangoCInP as CInP
 from django.core.exceptions import ValidationError
 
 from architect.fields import JSONField
-from architect.Contractor.models import Complex, BluePrint
-from architect.Plan.models import Plan
+from architect.Contractor.models import Complex
+from architect.Plan.models import Plan, PlanBluePrint
 
 from architect.Contractor.Contractor import getContractor
 
@@ -28,7 +28,7 @@ JOB_STATE_CHOICES = ( 'new', 'waiting', 'done', 'error' )
 class Instance( models.Model ):
   plan = models.ForeignKey( Plan, on_delete=models.PROTECT )
   state = models.CharField( max_length=10, choices=zip( INSTANCE_STATE_CHOICES, INSTANCE_STATE_CHOICES ) )
-  blueprint = models.ForeignKey( BluePrint, on_delete=models.PROTECT )
+  blueprint = models.ForeignKey( PlanBluePrint, on_delete=models.PROTECT )
   hostname = models.CharField( max_length=200, unique=True )
   nonce = models.CharField( max_length=26, unique=True )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )
@@ -39,7 +39,8 @@ class Instance( models.Model ):
 
   @classmethod
   def create( cls, plan, complex_name, blueprint_name ):
-    result = cls( plan=plan, complex=Complex.objects.get( name=complex_name ), blueprint=BluePrint.objects.get( name=blueprint_name ) )
+    print( cls, plan, complex_name, blueprint_name )
+    result = cls( plan=plan, complex=Complex.objects.get( name=complex_name ), blueprint=plan.planblueprint_set.get( script_name=blueprint_name ) )
     result.state = 'new'
     result.nonce = plan.nextNonce()
     result.hostname = plan.hostname_pattern.format( **{ 'plan': plan.name, 'compex': complex_name, 'blueprint': blueprint_name, 'site': result.complex.site_id, 'nonce': result.nonce } )
@@ -196,12 +197,12 @@ class Action( models.Model ):
     self.save()
     job.delete()
 
-  @cinp.list_filter( name='instance', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Builder.models.Instance' } ] )
+  @cinp.list_filter( name='instance', paramater_type_list=[ { 'type': 'Model', 'model': Instance } ] )
   @staticmethod
   def filter_instance( instance ):
     return Action.objects.filter( instance=instance )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': Plan } ] )
   @staticmethod
   def filter_plan( plan ):
     return Action.objects.filter( instance__plan=plan )
@@ -263,7 +264,7 @@ class Job( models.Model ):
 
     # ignore every other state
 
-  @cinp.action( return_type='String', paramater_type_list=[ 'String', 'String', 'String', 'String', 'Integer', 'Integer' ] )
+  @cinp.action( return_type='String', paramater_type_list=[ 'String', 'String', 'String', 'String', 'String', 'Integer' ] )
   def jobNotify( self, token, target, script, at, foundation=None, structure=None ):
     if token != self.web_hook_token or target != self.target:
       return 'invalid token and/or target'
@@ -278,17 +279,17 @@ class Job( models.Model ):
 
     return 'thanks'
 
-  @cinp.list_filter( name='action', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Builder.models.Action' } ] )
+  @cinp.list_filter( name='action', paramater_type_list=[ { 'type': 'Model', 'model': Action } ] )
   @staticmethod
   def filter_action( action ):
     return Job.objects.filter( action=action )
 
-  @cinp.list_filter( name='instance', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Builder.models.Instance' } ] )
+  @cinp.list_filter( name='instance', paramater_type_list=[ { 'type': 'Model', 'model': Instance } ] )
   @staticmethod
   def filter_instance( instance ):
     return Job.objects.filter( action__instance=instance )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': Plan } ] )
   @staticmethod
   def filter_plan( plan ):
     return Job.objects.filter( action__instance__plan=plan )

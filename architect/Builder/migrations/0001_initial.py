@@ -9,16 +9,14 @@ import architect.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Plan', '0001_initial'),
-        ('Contractor', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
             name='Action',
             fields=[
-                ('id', models.AutoField(primary_key=True, auto_created=True, verbose_name='ID', serialize=False)),
-                ('action', models.CharField(max_length=10, choices=[('build', 'build'), ('destroy', 'destroy'), ('rebuild', 'rebuild'), ('move', 'move')])),
+                ('id', models.AutoField(serialize=False, auto_created=True, verbose_name='ID', primary_key=True)),
+                ('action', models.CharField(choices=[('build', 'build'), ('destroy', 'destroy'), ('rebuild', 'rebuild'), ('move', 'move')], max_length=10)),
                 ('state', architect.fields.JSONField(default={}, blank=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
@@ -27,35 +25,27 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Instance',
             fields=[
-                ('id', models.AutoField(primary_key=True, auto_created=True, verbose_name='ID', serialize=False)),
-                ('state', models.CharField(max_length=10, choices=[('new', 'new'), ('built', 'built'), ('destroyed', 'destroyed'), ('processing', 'processing')])),
+                ('id', models.AutoField(serialize=False, auto_created=True, verbose_name='ID', primary_key=True)),
+                ('state', models.CharField(choices=[('new', 'new'), ('built', 'built'), ('destroyed', 'destroyed'), ('processing', 'processing')], max_length=10)),
                 ('hostname', models.CharField(max_length=200, unique=True)),
                 ('nonce', models.CharField(max_length=26, unique=True)),
-                ('foundation_id', models.CharField(max_length=100, null=True, unique=True, blank=True)),
+                ('foundation_id', models.CharField(max_length=100, unique=True, blank=True)),
                 ('structure_id', models.IntegerField(null=True, unique=True, blank=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('blueprint', models.ForeignKey(to='Contractor.BluePrint', on_delete=django.db.models.deletion.PROTECT)),
-                ('complex', models.ForeignKey(to='Contractor.Complex', on_delete=django.db.models.deletion.PROTECT)),
-                ('plan', models.ForeignKey(to='Plan.Plan', on_delete=django.db.models.deletion.PROTECT)),
             ],
         ),
         migrations.CreateModel(
             name='Job',
             fields=[
-                ('id', models.AutoField(primary_key=True, auto_created=True, verbose_name='ID', serialize=False)),
-                ('target', models.CharField(max_length=10, choices=[('foundation', 'foundation'), ('structure', 'structure')])),
-                ('task', models.CharField(max_length=7, choices=[('build', 'build'), ('destroy', 'destroy'), ('move', 'move')])),
-                ('state', models.CharField(max_length=7, choices=[('new', 'new'), ('waiting', 'waiting'), ('done', 'done'), ('error', 'error')])),
+                ('id', models.AutoField(serialize=False, auto_created=True, verbose_name='ID', primary_key=True)),
+                ('target', models.CharField(choices=[('foundation', 'foundation'), ('structure', 'structure')], max_length=10)),
+                ('task', models.CharField(choices=[('build', 'build'), ('destroy', 'destroy'), ('move', 'move')], max_length=7)),
+                ('state', models.CharField(choices=[('new', 'new'), ('waiting', 'waiting'), ('done', 'done'), ('error', 'error')], max_length=7)),
                 ('web_hook_token', models.CharField(null=True, max_length=40, blank=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('action', models.OneToOneField(to='Builder.Action', on_delete=django.db.models.deletion.PROTECT)),
             ],
-        ),
-        migrations.AddField(
-            model_name='action',
-            name='instance',
-            field=models.OneToOneField(to='Builder.Instance', on_delete=django.db.models.deletion.PROTECT),
         ),
     ]

@@ -1,7 +1,7 @@
 import hashlib
 import base64
 
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
@@ -44,7 +44,7 @@ class Plan( models.Model ):
   enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
   config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
-  last_change = models.DateTimeField( auto_now_add=True )
+  last_change = models.DateTimeField()
   max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
 
   hostname_pattern = models.CharField( max_length=100, default='{plan}-{blueprint}-{nonce}' )
@@ -62,10 +62,11 @@ class Plan( models.Model ):
   created = models.DateTimeField( auto_now_add=True )
 
   def nextNonce( self ):
-    plan = Plan.objects.select_for_update().get( name=self.name )
-    counter = plan.nonce_counter
-    plan.nonce_counter += 1
-    plan.save()
+    with transaction.atomic():
+      plan = Plan.objects.select_for_update().get( name=self.name )
+      counter = plan.nonce_counter
+      plan.nonce_counter += 1
+      plan.save()
 
     # nonce must be hostname safe and lowercase
     nonce = hashlib.md5()
@@ -110,12 +111,12 @@ class PlanComplex( models.Model ):
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': Plan } ] )
   @staticmethod
   def filter_plan( plan ):
     return PlanComplex.objects.filter( plan=plan )
 
-  @cinp.list_filter( name='complex', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.Complex' } ] )
+  @cinp.list_filter( name='complex', paramater_type_list=[ { 'type': 'Model', 'model': Complex } ] )
   @staticmethod
   def filter_complex( plan ):
     return PlanComplex.objects.filter( complex=complex )
@@ -143,8 +144,9 @@ class PlanBluePrint( models.Model ):
   """
   Attaches a Plan to a BluePrint
   """
-  plan = models.ForeignKey( Plan, related_name='+', on_delete=models.CASCADE )
-  blueprint = models.ForeignKey( BluePrint, related_name='+', on_delete=models.PROTECT  )
+  plan = models.ForeignKey( Plan, on_delete=models.CASCADE )
+  blueprint = models.ForeignKey( BluePrint, related_name='+', on_delete=models.PROTECT )
+  script_name = models.CharField( max_length=40 )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 
@@ -157,12 +159,12 @@ class PlanBluePrint( models.Model ):
     if errors:
       raise ValidationError( errors )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': Plan } ] )
   @staticmethod
   def filter_plan( plan ):
     return PlanBluePrint.objects.filter( plan=plan )
 
-  @cinp.list_filter( name='blueprint', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Contractor.models.BluePrint' } ] )
+  @cinp.list_filter( name='blueprint', paramater_type_list=[ { 'type': 'Model', 'model': BluePrint } ] )
   @staticmethod
   def filter_blueprint( blueprint ):
     return PlanBluePrint.objects.filter( blueprint=blueprint )
@@ -176,7 +178,7 @@ class PlanBluePrint( models.Model ):
     return 'PlanBluePrint for Plan "{0}" to "{1}" '.format( self.plan, self.blueprint.name )
 
   class Meta:
-    unique_together = ( ( 'plan', 'blueprint' ), )
+    unique_together = ( ( 'plan', 'blueprint', 'script_name' ), )
 
 
 @cinp.model( not_allowed_verb_list=[ 'CALL' ] )
@@ -201,12 +203,12 @@ class PlanTimeSeries( models.Model ):
     if errors:
       raise ValidationError( errors )
 
-  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.Plan.models.Plan' } ] )
+  @cinp.list_filter( name='plan', paramater_type_list=[ { 'type': 'Model', 'model': Plan } ] )
   @staticmethod
   def filter_plan( plan ):
     return PlanTimeSeries.objects.filter( plan=plan )
 
-  @cinp.list_filter( name='timeseries', paramater_type_list=[ { 'type': 'Model', 'model': 'architect.TimeSeries.models.RawTimeSeries' } ] )
+  @cinp.list_filter( name='timeseries', paramater_type_list=[ { 'type': 'Model', 'model': RawTimeSeries } ] )
   @staticmethod
   def filter_timeseries( timeseries ):
     return PlanTimeSeries.objects.filter( timeseries=timeseries )

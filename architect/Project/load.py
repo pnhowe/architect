@@ -130,7 +130,7 @@ PLAN_PATTERN = {
                  'script': str,
                  'address_block': str,
                  'complex_list': ( list, [] ),
-                 'blueprint_list': ( list, [] ),
+                 'blueprint_map': ( dict, {} ),
                  'timeseries_map': dict,
                  'enabled': ( bool, None ),
                  'change_cooldown': ( int, None ),

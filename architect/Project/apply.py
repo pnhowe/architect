@@ -63,6 +63,9 @@ def applyChange( change ):
 
       result = 'Structure "{0}" updated fields: "{1}"'.format( change.target_id, '", "'.join( change.target_val.keys() ) )
 
+    elif change.action == 'remote_delete':
+      raise Exception( 'TODO' )
+
     else:
       raise ValueError( 'Unknown Action "{0}" for Structure'.format( change.action ) )
 
@@ -131,18 +134,13 @@ def applyChange( change ):
         plancomplex.full_clean()
         plancomplex.save()
 
-      blueprint_list = change.target_val.get( 'blueprint_list', [] )
-      for blueprint_name in blueprint_list:
-        try:
-          blueprint = BluePrint.objects.get( name=blueprint_name )
-        except Complex.DoesNotExist:
-          raise ValueError( 'Blueprint named "{0}" not found'.format( blueprint_name ) )
+      blueprint_map = change.target_val.get( 'blueprint_map', {} )
+      for script_name, blueprint_name in blueprint_map.items():
+        blueprint = PlanBluePrint( plan=plan, script_name=script_name, blueprint=BluePrint.objects.get( name=blueprint_name ) )
+        blueprint.full_clean()
+        blueprint.save()
 
-        planblueprint = PlanBluePrint( plan=plan, blueprint=blueprint )
-        planblueprint.full_clean()
-        planblueprint.save()
-
-      timeseries_map = change.target_val.get( 'timeseries_map', [] )
+      timeseries_map = change.target_val.get( 'timeseries_map', {} )
       for script_name, timeseries_metric in timeseries_map.items():
         try:
           timeseries = RawTimeSeries.objects.get( metric=timeseries_metric )
@@ -190,37 +188,31 @@ def applyChange( change ):
 
           plancomplex.delete()
 
-      if 'blueprint_list' in change.target_val:
-        blueprint_list = set( change.target_val.get( 'blueprint_list', [] ) )
-        cur_blueprint_list = set( [ i.name for i in plan.blueprint_list.all() ] )
-        for blueprint_name in list( blueprint_list - cur_blueprint_list ):
+      if 'blueprint_map' in change.target_val:
+        blueprint_list = set( change.target_val.get( 'blueprint_map', {} ).items() )
+        cur_blueprint_list = set( [ ( i.script_name, i.blueprint.name ) for i in plan.planblueprint_set.all() ] )
+        for script_name, blueprint_name in list( blueprint_list - cur_blueprint_list ):
           try:
             blueprint = BluePrint.objects.get( name=blueprint_name )
           except Complex.DoesNotExist:
             raise ValueError( 'Blueprint named "{0}" not found'.format( blueprint_name ) )
 
-          planblueprint = PlanBluePrint( plan=plan, blueprint=blueprint )
+          planblueprint = PlanBluePrint( plan=plan, script_name=script_name, blueprint=blueprint )
           planblueprint.full_clean()
           planblueprint.save()
 
-        for blueprint_name in list( cur_blueprint_list - blueprint_list ):
+        for script_name, blueprint_name in list( cur_blueprint_list - blueprint_list ):
           try:
-            planblueprint = PlanBluePrint.objects.get( plan=plan, blueprint_name=blueprint_name )
+            planblueprint = PlanBluePrint.objects.get( plan=plan, script_name=script_name, blueprint__name=blueprint_name )
           except PlanBluePrint.DoesNotExist:
             continue
 
           planblueprint.delete()
 
       if 'timeseries_map' in change.target_val:
-        timeseries_map = change.target_val.get( 'timeseries_map', {} )
-        timeseries_list = set( timeseries_map.keys() )
-        cur_timeseries_map = {}
-        for timeseries in plan.timeseries_list.all():
-          cur_timeseries_map[ timeseries.script_name ] = timeseries.timeseries.name
-        cur_timeseries_list = set( cur_timeseries_map.keys() )  # TODO: compare metrics too
-
-        for script_name in list( timeseries_list - cur_timeseries_list ):
-          timeseries_metric = timeseries_map[ script_name ]
+        timeseries_list = set( change.target_val.get( 'timeseries_map', {} ).items() )
+        cur_timeseries_list = set( [ ( i.script_name, i.timeseries.metric ) for i in plan.plantimeseries_set.all() ] )
+        for script_name, timeseries_metric in list( timeseries_list - cur_timeseries_list ):
           try:
             timeseries = RawTimeSeries.objects.get( metric=timeseries_metric )
           except RawTimeSeries.DoesNotExist:
@@ -228,13 +220,13 @@ def applyChange( change ):
             timeseries.full_clean()
             timeseries.save()
 
-          plantimeseries = PlanTimeSeries( plan=plan, timeseries=timeseries, script_name=script_name )
+          plantimeseries = PlanTimeSeries( plan=plan, script_name=script_name, timeseries=timeseries )
           plantimeseries.full_clean()
           plantimeseries.save()
 
-        for script_name in list( cur_timeseries_list - timeseries_list ):
+        for script_name, timeseries_metric in list( cur_timeseries_list - timeseries_list ):
           try:
-            plantimeseries = RawTimeSeries.objects.get( plan=plan, script_name=script_name )
+            plantimeseries = RawTimeSeries.objects.get( plan=plan, script_name=script_name, timeseries__metric=timeseries_metric )
           except RawTimeSeries.DoesNotExist:
             continue
 

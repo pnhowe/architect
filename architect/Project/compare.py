@@ -174,8 +174,14 @@ class ProjectComparer():
     return dirty
 
   def _structure( self, project_site, local_site ):
+    print( self, project_site, local_site )
     dirty = False
     project_structure_list = set( project_site[ 'structure' ].keys() )
+
+    plan_instance_list = []
+    for plan in local_site.plan_set.all():
+      plan_instance_list += plan.instance_set.all().values_list( 'hostname', flat=True )
+    plan_instance_list = set( plan_instance_list )
 
     # create/destroy structures
     remote_structure_map = self.contractor.getStructureMap( local_site.name )
@@ -186,7 +192,7 @@ class ProjectComparer():
       self.change_list.append( { 'type': 'structure', 'action': 'remote_create', 'site': local_site, 'target_id': structure_name, 'target_val': project_structure } )
       dirty = True
 
-    for structure_name in remote_structure_list - project_structure_list:
+    for structure_name in remote_structure_list - project_structure_list - plan_instance_list:
       self.change_list.append( { 'type': 'structure', 'action': 'remote_delete', 'site': local_site, 'target_id': structure_name } )
       dirty = True
 
@@ -195,6 +201,9 @@ class ProjectComparer():
 
     # update structure details
     for structure_name, remote_structure in remote_structure_map.items():
+      if structure_name in plan_instance_list:
+        continue
+
       project_structure = project_site[ 'structure' ][ structure_name ]
       change_list = _compare( remote_structure, project_structure, ( 'blueprint', 'type', 'address_list', 'config_values' ) )
 
@@ -283,16 +292,13 @@ class ProjectComparer():
 
       local_plan = local_plan_obj.__dict__
       local_plan[ 'complex_list' ] = [ i.name for i in local_plan_obj.complex_list.all() ]
-      local_plan[ 'blueprint_list' ] = [ i.name for i in local_plan_obj.blueprint_list.all() ]
-
-      local_plan[ 'timeseries_map' ] = {}
-      for plantimeseries in local_plan_obj.plantimeseries_set.all():
-        local_plan[ 'timeseries_map' ][ plantimeseries.script_name ] = plantimeseries.timeseries.metric
+      local_plan[ 'blueprint_map' ] = dict( [ ( i.script_name, i.blueprint.name ) for i in local_plan_obj.planblueprint_set.all() ] )
+      local_plan[ 'timeseries_map' ] = dict( [ ( i.script_name, i.timeseries.metric ) for i in local_plan_obj.plantimeseries_set.all() ] )
 
       pprint( project_plan )
       pprint( local_plan )
 
-      change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'blueprint_list', 'timeseries_map', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
+      change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'blueprint_map', 'timeseries_map', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
       if change_list:
         self.change_list.append( { 'type': 'plan', 'action': 'change', 'site': local_site, 'target_id': plan_name,
                                    'current_val': dict( [ ( i, local_plan[ i ] ) for i in change_list ] ),
@@ -301,5 +307,3 @@ class ProjectComparer():
         dirty = True
 
     return dirty
-
-    # timeseries_list = models.ManyToManyField( RawTimeSeries, through='PlanTimeSeries' )
