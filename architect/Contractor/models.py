@@ -15,7 +15,7 @@ cinp = CInP( 'Contractor', '0.1' )
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'CALL' ] )
 class Complex( models.Model ):   # TODO: ReadOnly from API
   name = models.CharField( max_length=40, primary_key=True )  # also the id on contractor
-  site = models.ForeignKey( 'Project.Site' )
+  site = models.ForeignKey( 'Project.Site', on_delete=models.PROTECT )
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 

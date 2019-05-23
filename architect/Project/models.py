@@ -94,7 +94,7 @@ class Loader( models.Model ):
 class Change( models.Model ):
   type = models.CharField( max_length=13, choices=zip( CHANGE_TYPE_CHOICES, CHANGE_TYPE_CHOICES ) )
   action = models.CharField( max_length=13, choices=zip( CHANGE_ACTION_CHOICES, CHANGE_ACTION_CHOICES ) )
-  site = models.ForeignKey( Site, blank=True, null=True, related_name='+' )
+  site = models.ForeignKey( Site, blank=True, null=True, related_name='+', on_delete=models.PROTECT )
   target_id = models.CharField( max_length=50 )
   current_val = JSONField( blank=True, null=True )
   target_val = JSONField( blank=True, null=True )

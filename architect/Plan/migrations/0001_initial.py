@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.db import migrations, models
 import django.db.models.deletion
 import architect.fields
+from datetime import datetime
 
 
 class Migration(migrations.Migration):
@@ -24,7 +25,7 @@ class Migration(migrations.Migration):
                 ('enabled', models.BooleanField(default=False)),
                 ('change_cooldown', models.IntegerField(default=300, help_text='number of seconds to wait after a change before re-evaluating the plan')),
                 ('config_values', architect.fields.MapField(default={}, blank=True, help_text="Contracor style config values, which are loaded into Contractor's Structure model when the Structure is created")),
-                ('last_change', models.DateTimeField()),
+                ('last_change', models.DateTimeField(default=datetime.min)),
                 ('max_inflight', models.IntegerField(default=2, help_text='number of things that can be changing at the same time')),
                 ('hostname_pattern', models.CharField(default='{plan}-{blueprint}-{nonce}', max_length=100)),
                 ('script', models.TextField()),

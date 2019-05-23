@@ -7,16 +7,19 @@ CONTRACTOR_API_VERSION = '0.9'
 
 
 def getContractor():
-  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_PROXY )
+  return Contractor( settings.CONTRACTOR_HOST, settings.CONTRACTOR_USERNAME, settings.CONTRACTOR_PASSWORD, settings.CONTRACTOR_PROXY )
 
 
 class Contractor():
-  def __init__( self, host, proxy=None ):
+  def __init__( self, host, username, password, proxy=None ):
     super().__init__()
     self.cinp = client.CInP( host, '/api/v1/', proxy )
     root = self.cinp.describe( '/api/v1/' )
     if root[ 'api-version' ] != CONTRACTOR_API_VERSION:
       raise Exception( 'Expected API version "{0}" found "{1}"'.format( CONTRACTOR_API_VERSION, root[ 'api-version' ] ) )
+
+    token = self.cinp.call( '/api/v1/Auth/User(login)', { 'username': username, 'password': password } )
+    self.cinp.setAuth( username, token )
 
   # Site functions
   def getSiteList( self ):
@@ -69,20 +72,21 @@ class Contractor():
     for uri, item in self.cinp.getFilteredObjects( '/api/v1/Utilities/AddressBlock', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
       item[ 'reserved_offset_list' ] = list( self.getAddressBlockReserved( uri ).keys() )
       item[ 'dynamic_offset_list' ] = list( self.getAddressBlockDynamic( uri ).keys() )
+      item[ 'id' ] = uri.split( ':', 2 )[ 1 ]
       result[ item[ 'name' ] ] = item
 
     return result
 
   def createAddressBlock( self, site_id, name, **value_map ):
-    data = { 'name': name, 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) }
+    data = { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ), 'name': name }
     for name in ( 'subnet', 'prefix', 'gateway_offset' ):
       try:
         data[ name ] = value_map[ name ]
       except KeyError:
         pass
 
-    # data[ 'reserved_offset_list' ] = value_map[ 'reserved_offset_list' ]  # for now we will let the up comming update set the reserved_offset_list
-    # data[ 'dynamic_offset_list' ] = value_map[ 'dynamic_offset_list' ]  # for now we will let the up comming update set the dynamic_offset_list
+    # data[ 'reserved_offset_list' ] = value_map[ 'reserved_offset_list' ]  # for now we will let the up next update set the reserved_offset_list
+    # data[ 'dynamic_offset_list' ] = value_map[ 'dynamic_offset_list' ]  # for now we will let the up next update set the dynamic_offset_list
 
     self.cinp.create( '/api/v1/Utilities/AddressBlock', data )
 
@@ -142,30 +146,49 @@ class Contractor():
 
     return result
 
-  # Structure Functions - for these the Foundation is a part of the Structure as far as Contractor is concerened
+  def getAddressBlock( self, site, name ):
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Utilities/AddressBlock', 'site', { 'site': site } ):
+      if item[ 'name' ] == name:
+        return uri
+
+    raise ValueError( 'AddressBlock "{0}" in site "{1}", not found'.format( name, site ) )
+
+  # Structure Functions - for these the Foundation is a part of the Structure as far as Architect is concerened
   # for now we are going to assume these instances are created atomically with both foundation and structure, so pull the structures, that is what we are really after anyway
   def getStructureMap( self, site_id ):
+    site = '/api/v1/Site/Site:{0}:'.format( site_id )
+    address_block_cache = {}
+
+    def addressLookup( address_block ):
+      try:
+        return address_block_cache[ address_block ]
+      except KeyError:
+        tmp = self.cinp.get( address_block )
+        address_block_cache[ address_block ] = tmp[ 'name' ]
+        return address_block_cache[ address_block ]
+
     result = {}
     foundation_map = {}
-    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Foundation', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Foundation', 'site', { 'site': site } ):
       foundation_map[ uri ] = item
 
-    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Structure', 'site', { 'site': '/api/v1/Site/Site:{0}:'.format( site_id ) } ):
+    for uri, item in self.cinp.getFilteredObjects( '/api/v1/Building/Structure', 'site', { 'site': site } ):
       address_list = list( self.cinp.getFilteredObjects( '/api/v1/Utilities/Address', 'structure', { 'structure': uri } ) )
       foundation = foundation_map[ item[ 'foundation' ] ]
       tmp = {}
       tmp[ 'type' ] = foundation[ 'type' ]
       tmp[ 'blueprint' ] = item[ 'blueprint' ].split( ':' )[1]
-      tmp[ 'address_list' ] = [ { 'address_block': i[1][ 'address_block' ].split( ':' )[1], 'offset': i[1][ 'offset' ] } for i in address_list ]
+      tmp[ 'address_list' ] = [ { 'address_block': addressLookup( i[1][ 'address_block' ] ), 'offset': i[1][ 'offset' ] } for i in address_list ]
       tmp[ 'config_values' ] = item[ 'config_values' ]
       result[ item[ 'hostname' ] ] = tmp
 
     return result
 
   def createStructure( self, site_id, name, **value_map ):
+    site = '/api/v1/Site/Site:{0}:'.format( site_id )
     address_list = value_map[ 'address_list' ]
     data = {}
-    data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
+    data[ 'site' ] = site
     data[ 'locator' ] = name
     if value_map[ 'type' ] == 'Manual':
       data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:manual-foundation-base:'
@@ -177,12 +200,11 @@ class Contractor():
     foundation_id = self.cinp.uri.extractIds( foundation )[0]
 
     data = {}
-    data[ 'site' ] = '/api/v1/Site/Site:{0}:'.format( site_id )
+    data[ 'site' ] = site
     data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
     data[ 'hostname' ] = name
     data[ 'blueprint' ] = '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( value_map[ 'blueprint' ] )
     # data[ 'config_values' ] = value_map[ 'config_values' ]
-    data[ 'auto_build' ] = True  # Static stuff builds when it can
     structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
     structure_id = self.cinp.uri.extractIds( structure )[0]
 
@@ -191,13 +213,16 @@ class Contractor():
     for address in address_list:
       data = {}
       data[ 'networked' ] = '/api/v1/Utilities/Networked:{0}:'.format( structure_id )
-      data[ 'address_block' ] = '/api/v1/Utilities/AddressBlock:{0}:'.format( address[ 'address_block' ] )
+      data[ 'address_block' ] = self.getAddressBlock( site, address[ 'address_block' ] )
       data[ 'offset' ] = address[ 'offset' ]
       data[ 'interface_name' ] = 'eth0'
       data[ 'vlan' ] = 0
       data[ 'is_primary' ] = is_primary
       address_id_list.append( self.cinp.create( '/api/v1/Utilities/Address', data )[0] )
       is_primary = False
+
+    self.cinp.call( '/api/v1/Building/Foundation:{0}:(doCreate)'.format( foundation_id ), {} )
+    self.cinp.call( '/api/v1/Building/Structure:{0}:(doCreate)'.format( structure_id ), {} )
 
     print( '************************  created "{0}" and "{1}({2})"'.format( foundation, structure, address_id_list ) )
 
@@ -218,8 +243,21 @@ class Contractor():
       self.cinp.update( foundation[ 'attached_structure' ], structure_data )
 
   def deleteStructure( self, id ):
-    # TODO: submit deconfigure job, if one allready exists, raise ValueError
-    raise Exception( 'Not implemented yet' )
+    foundation_uri = '/api/v1/Building/Foundation:{0}:'.format( id )
+    foundation = self.cinp.get( foundation_uri )
+    structure_uri = foundation[ 'attached_structure' ]
+    structure = self.cinp.get( structure_uri )
+
+    if structure[ 'state' ] == 'planned':  # for now we will have to go over this twice, first to destroy and second to delete
+      self.cinp.delete( structure_uri )
+      self.cinp.delete( foundation_uri )
+      return
+
+    structure_job = self.cinp.call( '/api/v1/Foreman/StructureJob(getStructureJob)', { 'structure': structure_uri } )
+
+    if structure_job is None:  # assuming the structure is following the foundation, so we don't end up creating a job for a foundation that just finished destroying
+      self.cinp.call( '{0}(doDestroy)'.format( structure_uri ), {} )
+      self.cinp.call( '{0}(doDestroy)'.format( foundation_uri ), {} )
 
   # Complex functions
   #
@@ -301,13 +339,6 @@ class Contractor():
     return foundation_id
 
   def buildFoundation( self, id ):
-    # we have to set locate manually b/c the structure is not auto-configure, at
-    # this point contractor dosen't autolocate foundations for non auto-configure structures.
-    # we are setting Located here so that a job dosen't get auto created before we
-    # can trigger the creation event, techinically there is still a  small hole that
-    #  a job can be built.  TODO: tweek foundatino so that it isn't auto built,
-    # would be nice if that also made it so we didn't have to setLocated
-    self.cinp.call( '/api/v1/Building/Foundation:{0}:(setLocated)'.format( id ), {} )
     job_id = self.cinp.call( '/api/v1/Building/Foundation:{0}:(doCreate)'.format( id ), {} )
     print( '------------------------- create Job foundation "{0}"'.format( job_id ) )
 
@@ -321,7 +352,6 @@ class Contractor():
     data[ 'hostname' ] = hostname
     data[ 'blueprint' ] = '/api/v1/BluePrint/StructureBluePrint:{0}:'.format( blueprint )
     data[ 'config_values' ] = config_values
-    data[ 'auto_build' ] = False  # architect explicitally starts them
     structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
 
     data = {}

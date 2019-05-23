@@ -153,7 +153,7 @@ class ProjectComparer():
       dirty = True
 
     for block_name in remote_address_block_list - project_address_block_list:
-      self.change_list.append( { 'type': 'address_block', 'action': 'remote_delete', 'site': local_site, 'target_id': block_name } )
+      self.change_list.append( { 'type': 'address_block', 'action': 'remote_delete', 'site': local_site, 'target_id': remote_address_block_map[ block_name ][ 'id' ] } )
       dirty = True
 
     if dirty:
@@ -162,10 +162,10 @@ class ProjectComparer():
     # update address block details
     for block_name, remote_address_block in remote_address_block_map.items():
       project_address_block = project_site[ 'address_block' ][ block_name ]
-      change_list = _compare( remote_address_block, project_address_block, ( 'subnet', 'prefix', 'gateway_offset', 'reserved_offset_list', 'dynamic_offset_list' ) )
+      change_list = _compare( remote_address_block, project_address_block, ( 'name', 'subnet', 'prefix', 'gateway_offset', 'reserved_offset_list', 'dynamic_offset_list' ) )
 
       if change_list:
-        self.change_list.append( { 'type': 'address_block', 'action': 'change', 'site': local_site, 'target_id': block_name,
+        self.change_list.append( { 'type': 'address_block', 'action': 'change', 'site': local_site, 'target_id': remote_address_block[ 'id' ],
                                    'current_val': dict( [ ( i, list( remote_address_block[ i ] ) ) for i in change_list ] ),
                                    'target_val': dict( [ ( i, project_address_block[ i ] ) for i in change_list ] )
                                    } )
@@ -174,7 +174,6 @@ class ProjectComparer():
     return dirty
 
   def _structure( self, project_site, local_site ):
-    print( self, project_site, local_site )
     dirty = False
     project_structure_list = set( project_site[ 'structure' ].keys() )
 

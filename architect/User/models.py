@@ -75,7 +75,7 @@ class User( models.Model ):
 @cinp.model( property_list=[ 'isActive' ], not_allowed_verb_list=[ 'GET', 'LIST', 'DELETE', 'CREATE', 'UPDATE' ] )
 class Session( models.Model ):
   token = models.CharField( max_length=64, primary_key=True )
-  user = models.ForeignKey( User )
+  user = models.ForeignKey( User, on_delete=models.CASCADE )
   last_hearbeat = models.DateTimeField()
   created = models.DateTimeField( editable=False, auto_now_add=True )
 

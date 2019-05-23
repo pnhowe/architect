@@ -1,5 +1,6 @@
 import hashlib
 import base64
+from datetime import datetime
 
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
@@ -44,7 +45,7 @@ class Plan( models.Model ):
   enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
   config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
-  last_change = models.DateTimeField()
+  last_change = models.DateTimeField( default=datetime.min )
   max_inflight = models.IntegerField( default=2, help_text='number of things that can be changing at the same time' )
 
   hostname_pattern = models.CharField( max_length=100, default='{plan}-{blueprint}-{nonce}' )

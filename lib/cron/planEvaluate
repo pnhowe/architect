@@ -59,7 +59,7 @@ for plan in Plan.objects.filter( enabled=True ):
 
   current_map = {}
   for blueprint_name in target_map.keys():
-    current_map[ blueprint_name ] = dict( ( i[ 'complex__name' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__name=blueprint_name ).exclude( state='destroyed' ).values( 'complex__name' ).annotate( count=Count( 'id' ) ) )
+    current_map[ blueprint_name ] = dict( ( i[ 'complex__name' ], i[ 'count' ] ) for i in Instance.objects.filter( plan=plan, blueprint__script_name=blueprint_name ).exclude( state='destroyed' ).values( 'complex__name' ).annotate( count=Count( 'id' ) ) )
 
   print( 'current' )
   print( current_map )

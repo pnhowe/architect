@@ -125,10 +125,10 @@ class Action( models.Model ):
     if self.action == 'build' and ( self.instance.foundation_id is None or self.instance.structure_id is None ):
       contractor = getContractor()
       if self.instance.foundation_id is None:
-        self.instance.foundation_id = contractor.createComplexFoundation( self.instance.complex.name, self.instance.blueprint.contractor_id, self.instance.hostname )
+        self.instance.foundation_id = contractor.createComplexFoundation( self.instance.complex.name, self.instance.blueprint.blueprint.contractor_id, self.instance.hostname )
 
       if self.instance.structure_id is None:
-        self.instance.structure_id = contractor.createComplexStructure( self.instance.plan.site.name, self.instance.foundation_id, self.instance.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values, self.instance.plan.address_block )
+        self.instance.structure_id = contractor.createComplexStructure( self.instance.plan.site.name, self.instance.foundation_id, self.instance.blueprint.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values, self.instance.plan.address_block )
 
     print( "---------{0}--------".format( self.instance.pk ) )
 
