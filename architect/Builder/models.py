@@ -32,8 +32,8 @@ class Instance( models.Model ):
   hostname = models.CharField( max_length=200, unique=True )
   nonce = models.CharField( max_length=26, unique=True )
   complex = models.ForeignKey( Complex, on_delete=models.PROTECT )
-  foundation_id = models.CharField( max_length=100, blank=True, unique=True )  # Contractor foundation locator
-  structure_id = models.IntegerField( null=True, blank=True, unique=True )  # Contractor structure id
+  foundation_id = models.CharField( max_length=100, blank=True, null=True, unique=True )  # Contractor foundation locator
+  structure_id = models.IntegerField( blank=True, null=True, unique=True )  # Contractor structure id
   updated = models.DateTimeField( auto_now=True )
   created = models.DateTimeField( auto_now_add=True )
 

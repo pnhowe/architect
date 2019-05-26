@@ -82,11 +82,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='plan',
-            name='site',
-            field=models.ForeignKey(to='Project.Site'),
-        ),
-        migrations.AddField(
-            model_name='plan',
             name='timeseries_list',
             field=models.ManyToManyField(to='TimeSeries.RawTimeSeries', through='Plan.PlanTimeSeries'),
         ),

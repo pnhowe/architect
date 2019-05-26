@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 ('state', models.CharField(choices=[('new', 'new'), ('built', 'built'), ('destroyed', 'destroyed'), ('processing', 'processing')], max_length=10)),
                 ('hostname', models.CharField(max_length=200, unique=True)),
                 ('nonce', models.CharField(max_length=26, unique=True)),
-                ('foundation_id', models.CharField(max_length=100, unique=True, blank=True)),
+                ('foundation_id', models.CharField(max_length=100, unique=True, blank=True, null=True)),
                 ('structure_id', models.IntegerField(null=True, unique=True, blank=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),

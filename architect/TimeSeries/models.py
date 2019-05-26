@@ -88,7 +88,7 @@ class CostTS( TimeSeries ):  # 0 -> large value
   @property
   def last_value( self ):
     value = getTS().get_last( 'complex.{0}.cost'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
-    if value < 0:
+    if value is None or value < 0:
       return 0
 
     return value
@@ -129,7 +129,7 @@ class AvailabilityTS( TimeSeries ):  # 0.0 -> 1.0
   @property
   def last_value( self ):
     value = getTS().get_last( 'complex.{0}.availability'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
-    if value < 0:
+    if value is None or value < 0:
       return 0
 
     if value > 1:
@@ -173,7 +173,7 @@ class ReliabilityTS( TimeSeries ):  # 0.0 -> 1.0
   @property
   def last_value( self ):
     value = getTS().get_last( 'complex.{0}.reliability'.format( self.complex.name ), LAST_VALUE_MAX_AGE )
-    if value < 0:
+    if value is None or value < 0:
       return 0
 
     if value > 1:

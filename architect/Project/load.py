@@ -11,7 +11,6 @@ item_list = ( 'address_block', 'structure', 'complex', 'plan' )
 
 def _sub_load( filepath, paramater_map ):
   template = string.Template( open( filepath, 'r' ).read() )
-
   config = toml.loads( template.substitute( paramater_map ) )
 
   result = {}
@@ -30,12 +29,6 @@ def _sub_find_load( filename, paramater_map, project_path ):
     return _sub_load( filepath, paramater_map )
 
   raise ValueError( 'Unable to find include "{0}"'.format( filename ) )
-
-
-def _prep_paramaters( paramater_map ):
-  for name in paramater_map:
-    if isinstance( paramater_map[ name ], str ):
-      paramater_map[ name ] = '\'{0}\''.format( paramater_map[ name ] )
 
 
 def _fix_types( data ):
@@ -76,7 +69,6 @@ def loadProject( project_path ):
 
     for filename, paramater_map in site.get( '__include__', {} ).items():
       paramater_map[ 'site' ] = name
-      _prep_paramaters( paramater_map )
       for item in item_list:
         sub = _sub_find_load( filename, paramater_map, project_path )
         result[ name ][ item ].update( sub[ item ] )
@@ -204,5 +196,5 @@ def validateProject( config ):
     for name in config[ site ][ 'complex' ]:
       _validate_item( 'complex.{0}.{1}'.format( site, name ), config[ site ][ 'complex' ][ name ], COMPLEX_PATTERN )
 
-    for name in config[ site ][ 'plan' ]:
-      _validate_item( 'plan.{0}.{1}'.format( site, name ), config[ site ][ 'plan' ][ name ], PLAN_PATTERN )
+    for name in config[ 'plan' ]:
+      _validate_item( 'plan.{0}'.format( name ), config[ 'plan' ][ name ], PLAN_PATTERN )

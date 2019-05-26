@@ -12,27 +12,27 @@ import random
 from architect.TimeSeries.TimeSeries import getTS
 
 complexes = {
-              'cplx01': {
+              'cplx01-site1': {
                          'cost': 2,
                          'availability': 0.95 + ( ( random.random() - 0.5 ) * 0.05 ),
                          'reliability': 0.90 + ( ( random.random() - 0.5 ) * 0.05 )
                       },
-              'cplx02': {
+              'cplx01-site2': {
                          'cost': 1,
                          'availability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 ),
                          'reliability': 0.80 + ( ( random.random() - 0.5 ) * 0.01 )
                       },
-              'cplx03': {
+              'cplx01-site3': {
                          'cost': 5,
                          'availability': 0.80 + ( ( random.random() - 0.5 ) * 0.02 ),
                          'reliability': 0.95 + ( ( random.random() - 0.5 ) * 0.02 )
                       },
-              'cplx04': {
+              'cplx01-site4': {
                          'cost': 10,
                          'availability': 0.50 + ( ( random.random() - 0.5 ) * 0.04 ),
                          'reliability': 0.98 + ( ( random.random() - 0.5 ) * 0.04 )
                       },
-              'cplx05': {
+              'cplx01-site5': {
                          'cost': 2,
                          'availability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 ),
                          'reliability': 0.90 + ( ( random.random() - 0.5 ) * 0.01 )

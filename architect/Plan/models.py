@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 
 from cinp.orm_django import DjangoCInP as CInP
 
-from architect.Project.models import Site
 from architect.TimeSeries.models import RawTimeSeries
 from architect.Contractor.models import Complex, BluePrint
 from architect.fields import MapField, script_name_regex, plan_name_regex
@@ -39,10 +38,9 @@ class Plan( models.Model ):
   """
 
   name = models.TextField( max_length=200, primary_key=True )
-  site = models.ForeignKey( Site, on_delete=models.CASCADE )
-  address_block = models.CharField( max_length=40 )  # also the id on Contractor
+  address_block = models.CharField( max_length=40, help_text='name of the address block, must be the same for each site' )
   description = models.CharField( max_length=200 )
-  enabled = models.BooleanField( default=False )  # enabled to be scanned and updated that is, any existing resources will not be affected
+  enabled = models.BooleanField( default=False, help_text='enabled to be scanned and updated that is, any existing resources will not be affected' )
   change_cooldown = models.IntegerField( default=300, help_text='number of seconds to wait after a change before re-evaluating the plan' )
   config_values = MapField( blank=True, help_text='Contracor style config values, which are loaded into Contractor\'s Structure model when the Structure is created' )
   last_change = models.DateTimeField( default=datetime.min )

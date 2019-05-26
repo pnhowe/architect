@@ -56,6 +56,7 @@ def _compare( current, project, name_list ):
 class ProjectComparer():
   def __init__( self, project, contractor ):
     pprint( project )
+    adf
     self.project = project
     self.contractor = contractor
     self.change_list = []
@@ -72,23 +73,23 @@ class ProjectComparer():
     local_site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
     project_site_list = set( self.project.keys() )
 
-    for site_name in project_site_list - local_site_list:
-      self.change_list.append( { 'type': 'site', 'action': 'local_create', 'target_id': site_name } )
-
     for site_name in local_site_list - project_site_list:
       self.change_list.append( { 'type': 'site', 'action': 'local_delete', 'target_id': site_name } )
+
+    for site_name in project_site_list - local_site_list:
+      self.change_list.append( { 'type': 'site', 'action': 'local_create', 'target_id': site_name } )
 
     if self.change_list:
       self.message = 'Local Site Add/Remove'
       return True
 
     remote_site_list = set( self.contractor.getSiteList() )
+    for site_name in remote_site_list - local_site_list:
+      self.change_list.append( { 'type': 'site', 'action': 'remote_delete', 'target_id': site_name } )
+
     for site_name in local_site_list - remote_site_list:
       project_site = self.project[ site_name ]
       self.change_list.append( { 'type': 'site', 'action': 'remote_create', 'target_id': site_name, 'target_val': { 'description': project_site[ 'description' ], 'config_values': project_site[ 'config_values' ] } } )
-
-    for site_name in remote_site_list - local_site_list:
-      self.change_list.append( { 'type': 'site', 'action': 'remote_delete', 'target_id': site_name } )
 
     if self.change_list:
       self.message = 'Remote Site Add/Remove'
@@ -113,7 +114,11 @@ class ProjectComparer():
       local_site.save()
 
     if self.change_list:
-      self.message = 'Changes'
+      self.message = 'Resource Changes'
+      return True
+
+    if self._plan( self.project.plan_map ):
+      self.message = 'Plan Changes'
       return True
 
     else:
@@ -135,9 +140,6 @@ class ProjectComparer():
     if self._complex( project_site, local_site ):
       return True
 
-    if self._plan( project_site, local_site ):
-      return True
-
     return False
 
   def _addressBlock( self, project_site, local_site ):
@@ -147,13 +149,13 @@ class ProjectComparer():
     # create/destroy the address blocks
     remote_address_block_map = self.contractor.getAddressBlockMap( local_site.name )
     remote_address_block_list = set( remote_address_block_map.keys() )
+    for block_name in remote_address_block_list - project_address_block_list:
+      self.change_list.append( { 'type': 'address_block', 'action': 'remote_delete', 'site': local_site, 'target_id': remote_address_block_map[ block_name ][ 'id' ] } )
+      dirty = True
+
     for block_name in project_address_block_list - remote_address_block_list:
       project_address_block = project_site[ 'address_block' ][ block_name ]
       self.change_list.append( { 'type': 'address_block', 'action': 'remote_create', 'site': local_site, 'target_id': block_name, 'target_val': project_address_block } )
-      dirty = True
-
-    for block_name in remote_address_block_list - project_address_block_list:
-      self.change_list.append( { 'type': 'address_block', 'action': 'remote_delete', 'site': local_site, 'target_id': remote_address_block_map[ block_name ][ 'id' ] } )
       dirty = True
 
     if dirty:
@@ -186,13 +188,13 @@ class ProjectComparer():
     remote_structure_map = self.contractor.getStructureMap( local_site.name )
     remote_structure_list = set( remote_structure_map.keys() )
 
+    for structure_name in remote_structure_list - project_structure_list - plan_instance_list:
+      self.change_list.append( { 'type': 'structure', 'action': 'remote_delete', 'site': local_site, 'target_id': structure_name } )
+      dirty = True
+
     for structure_name in project_structure_list - remote_structure_list:
       project_structure = project_site[ 'structure' ][ structure_name ]
       self.change_list.append( { 'type': 'structure', 'action': 'remote_create', 'site': local_site, 'target_id': structure_name, 'target_val': project_structure } )
-      dirty = True
-
-    for structure_name in remote_structure_list - project_structure_list - plan_instance_list:
-      self.change_list.append( { 'type': 'structure', 'action': 'remote_delete', 'site': local_site, 'target_id': structure_name } )
       dirty = True
 
     if dirty:
@@ -237,14 +239,13 @@ class ProjectComparer():
     # create/destroy complexes remotely
     remote_complex_map = self.contractor.getComplexMap( local_site.name )
     remote_complex_list = set( remote_complex_map.keys() )
+    for complex_name in remote_complex_list - local_complex_list:
+      self.change_list.append( { 'type': 'complex', 'action': 'remote_delete', 'site': local_site, 'target_id': complex_name } )
+      dirty = True
 
     for complex_name in local_complex_list - remote_complex_list:
       project_complex = project_site[ 'complex' ][ complex_name ]
       self.change_list.append( { 'type': 'complex', 'action': 'remote_create', 'site': local_site, 'target_id': complex_name, 'target_val': project_complex } )
-      dirty = True
-
-    for complex_name in remote_complex_list - local_complex_list:
-      self.change_list.append( { 'type': 'complex', 'action': 'remote_delete', 'site': local_site, 'target_id': complex_name } )
       dirty = True
 
     if dirty:
@@ -264,12 +265,12 @@ class ProjectComparer():
 
     return dirty
 
-  def _plan( self, project_site, local_site ):
+  def _plan( self, project_plan ):
     Plan = apps.get_model( 'Plan', 'Plan' )
     dirty = False
 
     # create/destroy plans
-    local_plan_list = set( Plan.objects.filter( site=local_site ).values_list( 'name', flat=True ) )
+    local_plan_list = set( Plan.objects.all().values_list( 'name', flat=True ) )
     project_plan_list = set( project_site[ 'plan' ].keys() )
 
     for plan_name in project_plan_list - local_plan_list:
