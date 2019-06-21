@@ -115,7 +115,6 @@ def applyChange( change ):
 
     if change.action == 'local_create':
       plan = Plan( name=change.target_id )
-      plan.site = change.site
 
       for key in ( 'description', 'address_block', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ):
         try:
@@ -159,7 +158,7 @@ def applyChange( change ):
       result = 'Plan "{0}" added locally'.format( change.target_id )
 
     elif change.action == 'change':
-      plan = Plan.objects.get( site=change.site, name=change.target_id )
+      plan = Plan.objects.get( name=change.target_id )
 
       for key in ( 'description', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ):
         try:

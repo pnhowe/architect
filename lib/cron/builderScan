@@ -6,14 +6,20 @@ import django
 os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
 django.setup()
 
+import logging
+
 from architect.Plan.models import Plan
 from architect.Builder.models import Action, Job
 
 ORDER_OF_OPERATIONS = ( 'move', 'build', 'destroy', 'rebuild' )
 
-print( 'Checking Plans...' )
+logging.basicConfig()
+logger = logging.getLogger()
+logger.setLevel( logging.DEBUG )
+
+logging.info( 'Checking Plans...' )
 for plan in Plan.objects.all():
-  print( 'Checking plan "{0}"...'.format( plan ) )
+  logging.info( 'Checking plan "{0}"...'.format( plan ) )
 
   actions_needed = plan.max_inflight - Action.objects.filter( instance__plan=plan ).exclude( state={} ).count()
 
@@ -26,14 +32,14 @@ for plan in Plan.objects.all():
   for action in action_list[ :actions_needed ]:
     action.start()
 
-print( 'Running Jobs...' )
+logging.info( 'Running Jobs...' )
 for job in Job.objects.filter( state__in=( 'new', 'done' ) ):
-  print( 'Running job"{0}"...'.format( job ) )
+  logging.info( 'Running job "{0}"...'.format( job ) )
   job.run()
 
-print( 'Running Actions...' )
+logging.info( 'Running Actions...' )
 for action in Action.objects.exclude( state={} ):
-  print( 'Running action "{0}"...'.format( action ) )
+  logging.info( 'Running action "{0}"...'.format( action ) )
   action.run()
 
-print( 'Done.' )
+logging.info( 'Done.' )

@@ -56,8 +56,8 @@ def _compare( current, project, name_list ):
 class ProjectComparer():
   def __init__( self, project, contractor ):
     pprint( project )
-    adf
-    self.project = project
+    self.site_map = project[ 'sites' ]
+    self.plan_map = project[ 'plans' ]
     self.contractor = contractor
     self.change_list = []
     self.message = None
@@ -71,7 +71,7 @@ class ProjectComparer():
     self.change_list = []
 
     local_site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
-    project_site_list = set( self.project.keys() )
+    project_site_list = set( self.site_map.keys() )
 
     for site_name in local_site_list - project_site_list:
       self.change_list.append( { 'type': 'site', 'action': 'local_delete', 'target_id': site_name } )
@@ -88,7 +88,7 @@ class ProjectComparer():
       self.change_list.append( { 'type': 'site', 'action': 'remote_delete', 'target_id': site_name } )
 
     for site_name in local_site_list - remote_site_list:
-      project_site = self.project[ site_name ]
+      project_site = self.site_map[ site_name ]
       self.change_list.append( { 'type': 'site', 'action': 'remote_create', 'target_id': site_name, 'target_val': { 'description': project_site[ 'description' ], 'config_values': project_site[ 'config_values' ] } } )
 
     if self.change_list:
@@ -97,7 +97,7 @@ class ProjectComparer():
 
     for site_name in project_site_list:
       local_site = Site.objects.get( name=site_name )
-      project_site = self.project[ site_name ]
+      project_site = self.site_map[ site_name ]
 
       hasher = hashlib.sha1()
       hasher.update( str( project_site ).encode() )
@@ -117,7 +117,7 @@ class ProjectComparer():
       self.message = 'Resource Changes'
       return True
 
-    if self._plan( self.project.plan_map ):
+    if self._plan( self.plan_map ):
       self.message = 'Plan Changes'
       return True
 
@@ -179,16 +179,13 @@ class ProjectComparer():
     dirty = False
     project_structure_list = set( project_site[ 'structure' ].keys() )
 
-    plan_instance_list = []
-    for plan in local_site.plan_set.all():
-      plan_instance_list += plan.instance_set.all().values_list( 'hostname', flat=True )
-    plan_instance_list = set( plan_instance_list )
+    local_instance_list = set( local_site.instance_set.all().values_list( 'hostname', flat=True ) )
 
     # create/destroy structures
     remote_structure_map = self.contractor.getStructureMap( local_site.name )
     remote_structure_list = set( remote_structure_map.keys() )
 
-    for structure_name in remote_structure_list - project_structure_list - plan_instance_list:
+    for structure_name in remote_structure_list - project_structure_list - local_instance_list:
       self.change_list.append( { 'type': 'structure', 'action': 'remote_delete', 'site': local_site, 'target_id': structure_name } )
       dirty = True
 
@@ -202,7 +199,7 @@ class ProjectComparer():
 
     # update structure details
     for structure_name, remote_structure in remote_structure_map.items():
-      if structure_name in plan_instance_list:
+      if structure_name in local_instance_list:
         continue
 
       project_structure = project_site[ 'structure' ][ structure_name ]
@@ -271,15 +268,15 @@ class ProjectComparer():
 
     # create/destroy plans
     local_plan_list = set( Plan.objects.all().values_list( 'name', flat=True ) )
-    project_plan_list = set( project_site[ 'plan' ].keys() )
+    project_plan_list = set( project_plan.keys() )
 
     for plan_name in project_plan_list - local_plan_list:
-      project_plan = project_site[ 'plan' ][ plan_name ]
-      self.change_list.append( { 'type': 'plan', 'action': 'local_create', 'site': local_site, 'target_id': plan_name, 'target_val': project_plan } )
+      project_plan = project_plan[ plan_name ]
+      self.change_list.append( { 'type': 'plan', 'action': 'local_create', 'target_id': plan_name, 'target_val': project_plan } )
       dirty = True
 
     for complex_name in local_plan_list - project_plan_list:
-      self.change_list.append( { 'type': 'plan', 'action': 'local_delete', 'site': local_site, 'target_id': plan_name } )
+      self.change_list.append( { 'type': 'plan', 'action': 'local_delete', 'target_id': plan_name } )
       dirty = True
 
     if dirty:
@@ -287,7 +284,7 @@ class ProjectComparer():
 
     # update plan details
     for plan_name in project_plan_list:
-      project_plan = project_site[ 'plan' ][ plan_name ]
+      project_plan = project_plan[ plan_name ]
       local_plan_obj = Plan.objects.get( name=plan_name )
 
       local_plan = local_plan_obj.__dict__
@@ -295,12 +292,9 @@ class ProjectComparer():
       local_plan[ 'blueprint_map' ] = dict( [ ( i.script_name, i.blueprint.name ) for i in local_plan_obj.planblueprint_set.all() ] )
       local_plan[ 'timeseries_map' ] = dict( [ ( i.script_name, i.timeseries.metric ) for i in local_plan_obj.plantimeseries_set.all() ] )
 
-      pprint( project_plan )
-      pprint( local_plan )
-
       change_list = _compare( local_plan, project_plan, ( 'description', 'complex_list', 'blueprint_map', 'timeseries_map', 'enabled', 'change_cooldown', 'config_values', 'max_inflight', 'hostname_pattern', 'script', 'slots_per_complex', 'can_move', 'can_destroy', 'can_build' ) )
       if change_list:
-        self.change_list.append( { 'type': 'plan', 'action': 'change', 'site': local_site, 'target_id': plan_name,
+        self.change_list.append( { 'type': 'plan', 'action': 'change', 'target_id': plan_name,
                                    'current_val': dict( [ ( i, local_plan[ i ] ) for i in change_list ] ),
                                    'target_val': dict( [ ( i, project_plan[ i ] ) for i in change_list ] )
                                    } )

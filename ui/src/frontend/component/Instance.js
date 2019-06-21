@@ -46,6 +46,7 @@ class Instance extends React.Component
             id = CInP.extractIds( id )[0];
             instance_list.push( { id: id,
                                 plan: instance.plan,
+                                site: instance.site,
                                 hostname: instance.hostname,
                                 state: instance.state,
                                 created: instance.created,
@@ -73,6 +74,7 @@ class Instance extends React.Component
                 <tbody>
                   <tr><th>Hostname</th><td>{ instance.hostname }</td></tr>
                   <tr><th>Plan</th><td><Link to={ '/plan/' + instance.plan }>{ instance.plan }</Link></td></tr>
+                  <tr><th>Site</th><td><Link to={ '/site/' + instance.site }>{ instance.site }</Link></td></tr>
                   <tr><th>Nonce</th><td>{ instance.nonce }</td></tr>
                   <tr><th>Complex</th><td>{ instance.complex }</td></tr>
                   <tr><th>BluePrint</th><td>{ instance.blueprint }</td></tr>
@@ -93,6 +95,7 @@ class Instance extends React.Component
         <TableHead>
           <TableCell>Id</TableCell>
           <TableCell>Plan</TableCell>
+          <TableCell>Site</TableCell>
           <TableCell>Hostname</TableCell>
           <TableCell>State</TableCell>
           <TableCell>Created</TableCell>
@@ -102,6 +105,7 @@ class Instance extends React.Component
           <TableRow key={ item.name } >
             <TableCell><Link to={ '/instance/' + item.id }>{ item.id }</Link></TableCell>
             <TableCell>{ item.plan }</TableCell>
+            <TableCell>{ item.site }</TableCell>
             <TableCell>{ item.hostname }</TableCell>
             <TableCell>{ item.state }</TableCell>
             <TableCell>{ item.created }</TableCell>

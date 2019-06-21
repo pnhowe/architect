@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
@@ -14,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='BluePrint',
             fields=[
-                ('id', models.AutoField(serialize=False, auto_created=True, verbose_name='ID', primary_key=True)),
+                ('id', models.AutoField(auto_created=True, verbose_name='ID', serialize=False, primary_key=True)),
                 ('contractor_id', models.CharField(null=True, unique=True, blank=True, max_length=40)),
                 ('name', models.CharField(null=True, unique=True, blank=True, max_length=50)),
                 ('updated', models.DateTimeField(auto_now=True)),
@@ -24,10 +25,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Complex',
             fields=[
-                ('name', models.CharField(serialize=False, max_length=40, primary_key=True)),
+                ('name', models.CharField(primary_key=True, serialize=False, max_length=40)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('site', models.ForeignKey(to='Project.Site')),
+                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Project.Site')),
             ],
         ),
     ]

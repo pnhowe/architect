@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.db.models.deletion
 import architect.fields
 
 
@@ -14,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Change',
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False, auto_created=True, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True, verbose_name='ID', serialize=False, primary_key=True)),
                 ('type', models.CharField(choices=[('site', 'site'), ('address_block', 'address_block'), ('structure', 'structure'), ('complex', 'complex'), ('plan', 'plan')], max_length=13)),
                 ('action', models.CharField(choices=[('local_create', 'local_create'), ('remote_create', 'remote_create'), ('local_delete', 'local_delete'), ('remote_delete', 'remote_delete'), ('change', 'change')], max_length=13)),
                 ('target_id', models.CharField(max_length=50)),
@@ -30,7 +31,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Loader',
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False, auto_created=True, verbose_name='ID')),
+                ('id', models.AutoField(auto_created=True, verbose_name='ID', serialize=False, primary_key=True)),
             ],
         ),
         migrations.CreateModel(
@@ -43,12 +44,12 @@ class Migration(migrations.Migration):
                 ('last_load', models.DateTimeField()),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('parent', models.ForeignKey(to='Project.Site', null=True, blank=True)),
+                ('parent', models.ForeignKey(null=True, blank=True, to='Project.Site')),
             ],
         ),
         migrations.AddField(
             model_name='change',
             name='site',
-            field=models.ForeignKey(related_name='+', null=True, to='Project.Site', blank=True),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='+', blank=True, to='Project.Site'),
         ),
     ]

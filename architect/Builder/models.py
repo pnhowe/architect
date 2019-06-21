@@ -27,6 +27,7 @@ JOB_STATE_CHOICES = ( 'new', 'waiting', 'done', 'error' )
 @cinp.model( not_allowed_verb_list=[ 'DELETE', 'CREATE', 'UPDATE', 'CALL' ], constant_set_map={ 'state': INSTANCE_STATE_CHOICES } )
 class Instance( models.Model ):
   plan = models.ForeignKey( Plan, on_delete=models.PROTECT )
+  site = models.ForeignKey( 'Project.Site', on_delete=models.PROTECT )
   state = models.CharField( max_length=10, choices=zip( INSTANCE_STATE_CHOICES, INSTANCE_STATE_CHOICES ) )
   blueprint = models.ForeignKey( PlanBluePrint, on_delete=models.PROTECT )
   hostname = models.CharField( max_length=200, unique=True )
@@ -39,11 +40,11 @@ class Instance( models.Model ):
 
   @classmethod
   def create( cls, plan, complex_name, blueprint_name ):
-    print( cls, plan, complex_name, blueprint_name )
     result = cls( plan=plan, complex=Complex.objects.get( name=complex_name ), blueprint=plan.planblueprint_set.get( script_name=blueprint_name ) )
+    result.site = result.complex.site
     result.state = 'new'
     result.nonce = plan.nextNonce()
-    result.hostname = plan.hostname_pattern.format( **{ 'plan': plan.name, 'compex': complex_name, 'blueprint': blueprint_name, 'site': result.complex.site_id, 'nonce': result.nonce } )
+    result.hostname = plan.hostname_pattern.format( **{ 'plan': plan.name, 'compex': complex_name, 'blueprint': blueprint_name, 'site': result.site.name, 'nonce': result.nonce } )
     result.full_clean()
     result.save()
     return result
@@ -128,7 +129,7 @@ class Action( models.Model ):
         self.instance.foundation_id = contractor.createComplexFoundation( self.instance.complex.name, self.instance.blueprint.blueprint.contractor_id, self.instance.hostname )
 
       if self.instance.structure_id is None:
-        self.instance.structure_id = contractor.createComplexStructure( self.instance.plan.site.name, self.instance.foundation_id, self.instance.blueprint.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values, self.instance.plan.address_block )
+        self.instance.structure_id = contractor.createComplexStructure( self.instance.site.name, self.instance.foundation_id, self.instance.blueprint.blueprint.contractor_id, self.instance.hostname, self.instance.plan.config_values, self.instance.plan.address_block )
 
     print( "---------{0}--------".format( self.instance.pk ) )
 

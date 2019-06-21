@@ -56,31 +56,37 @@ def _fix_types( data ):
 
 def loadProject( project_path ):
   config = toml.load( os.path.join( project_path, 'architect.toml' ) )
-  result = {}
+  site_map = {}
+  plan_map = {}
 
   for name in config[ 'site' ]:
     site = config[ 'site' ][ name ]
-    result[ name ] = site
+    site_map[ name ] = site
     for item in item_list:
       try:
-        result[ name ][ item ] = config[ item ][ name ]
+        site_map[ name ][ item ] = config[ item ][ name ]
       except KeyError:
-        result[ name ][ item ] = {}
+        site_map[ name ][ item ] = {}
 
     for filename, paramater_map in site.get( '__include__', {} ).items():
       paramater_map[ 'site' ] = name
       for item in item_list:
         sub = _sub_find_load( filename, paramater_map, project_path )
-        result[ name ][ item ].update( sub[ item ] )
+        site_map[ name ][ item ].update( sub[ item ] )
 
     try:
       del site[ '__include__' ]
     except KeyError:
       pass
 
-  _fix_types( result )
+  for name in config[ 'plan' ]:
+    plan = config[ 'plan' ][ name ]
+    plan_map[ name ] = plan
 
-  return result
+  _fix_types( site_map )
+  _fix_types( plan_map )
+
+  return { 'sites': site_map, 'plans': plan_map }
 
 SITE_PATTERN = {
                  'description': str,
@@ -170,31 +176,31 @@ def _validate_item( location, item, pattern ):
       _validate_item( location, row, pattern[0] )
 
 
-def validateProject( config ):
-  for site in config:
+def validateProject( project ):
+  for site, value_map in project[ 'sites' ].items():
     if not name_regex.match( site ):
       raise ValueError( 'Invalid Site Name "{0}"'.format( site ) )
 
-    _validate_item( 'site.{0}'.format( site ), config[ site ], SITE_PATTERN )
+    _validate_item( 'site.{0}'.format( site ), value_map, SITE_PATTERN )
 
-    for uid in config[ site ][ 'address_block' ]:
-      _validate_item( 'address_block.{0}.{1}'.format( site, uid ), config[ site ][ 'address_block' ][ uid ], ADDRESSBLOCK_PATTERN )
+    for uid in value_map[ 'address_block' ]:
+      _validate_item( 'address_block.{0}.{1}'.format( site, uid ), value_map[ 'address_block' ][ uid ], ADDRESSBLOCK_PATTERN )
 
-    for hostname in config[ site ][ 'structure' ]:
+    for hostname in value_map[ 'structure' ]:
       if not hostname_regex.match( hostname ):
         raise ValueError( 'Invalid hostname "{0}" in "{1}"'.format( hostname, site ) )
 
-      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), config[ site ][ 'structure' ][ hostname ], STRUCTURE_PATTERN )
+      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), value_map[ 'structure' ][ hostname ], STRUCTURE_PATTERN )
 
       try:
-        ftype = config[ site ][ 'structure' ][ hostname ][ 'type' ]
+        ftype = value_map[ 'structure' ][ hostname ][ 'type' ]
       except KeyError:
         raise ValueError( 'structure "{0}" in "{1}" missing type'.format( hostname, site ) )
 
-      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), config[ site ][ 'structure' ][ hostname ], STRUCTURE_PATTERN_MAP[ ftype ] )
+      _validate_item( 'structure.{0}.{1}'.format( site, hostname ), value_map[ 'structure' ][ hostname ], STRUCTURE_PATTERN_MAP[ ftype ] )
 
-    for name in config[ site ][ 'complex' ]:
-      _validate_item( 'complex.{0}.{1}'.format( site, name ), config[ site ][ 'complex' ][ name ], COMPLEX_PATTERN )
+    for complex in value_map[ 'complex' ]:
+      _validate_item( 'complex.{0}.{1}'.format( site, complex ), value_map[ 'complex' ][ complex ], COMPLEX_PATTERN )
 
-    for name in config[ 'plan' ]:
-      _validate_item( 'plan.{0}'.format( name ), config[ 'plan' ][ name ], PLAN_PATTERN )
+  for plan, value_map in project[ 'plans' ].items():
+    _validate_item( 'plan.{0}'.format( plan ), value_map, PLAN_PATTERN )

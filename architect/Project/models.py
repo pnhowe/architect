@@ -115,8 +115,8 @@ class Change( models.Model ):
     super().clean( *args, **kwargs )
     errors = {}
 
-    if self.type != 'site' and self.site is None:
-      errors[ 'site' ] = 'Required when type is not "site"'
+    if self.site is None and self.type not in ( 'site', 'plan' ):
+      errors[ 'site' ] = 'Required when type is not "site" or "plan"'
 
     if self.target_val is None and self.action not in ( 'local_create', 'remote_create', 'local_delete', 'remote_delete' ):
       errors[ 'target_val' ] = 'Required when not Creating'
