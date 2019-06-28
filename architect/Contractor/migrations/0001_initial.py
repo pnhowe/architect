@@ -16,8 +16,8 @@ class Migration(migrations.Migration):
             name='BluePrint',
             fields=[
                 ('id', models.AutoField(auto_created=True, verbose_name='ID', serialize=False, primary_key=True)),
-                ('contractor_id', models.CharField(null=True, unique=True, blank=True, max_length=40)),
-                ('name', models.CharField(null=True, unique=True, blank=True, max_length=50)),
+                ('contractor_id', models.CharField(null=True, max_length=40, blank=True, unique=True)),
+                ('name', models.CharField(null=True, max_length=50, blank=True, unique=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
@@ -25,10 +25,10 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Complex',
             fields=[
-                ('name', models.CharField(primary_key=True, serialize=False, max_length=40)),
+                ('name', models.CharField(max_length=40, serialize=False, primary_key=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
-                ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Project.Site')),
+                ('site', models.ForeignKey(to='Project.Site', on_delete=django.db.models.deletion.PROTECT)),
             ],
         ),
     ]

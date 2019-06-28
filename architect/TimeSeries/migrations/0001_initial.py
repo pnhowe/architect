@@ -26,14 +26,14 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Controller',
             fields=[
-                ('name', models.CharField(primary_key=True, serialize=False, max_length=50)),
-                ('scaler_type', models.CharField(default='none', choices=[('none', 'None'), ('step', 'Step'), ('linear', 'Linear')], max_length=5)),
+                ('name', models.CharField(max_length=50, serialize=False, primary_key=True)),
+                ('scaler_type', models.CharField(max_length=5, choices=[('none', 'None'), ('step', 'Step'), ('linear', 'Linear')], default='none')),
                 ('min_instances', models.IntegerField(null=True, blank=True)),
                 ('max_instances', models.IntegerField(null=True, blank=True)),
                 ('build_ahead', models.IntegerField(default=0)),
                 ('regenerate_rate', models.IntegerField(default=1)),
-                ('tsd_metric', models.CharField(null=True, blank=True, max_length=200)),
-                ('lockout_query', models.CharField(null=True, blank=True, max_length=200)),
+                ('tsd_metric', models.CharField(null=True, max_length=200, blank=True)),
+                ('lockout_query', models.CharField(null=True, max_length=200, blank=True)),
                 ('p_value', models.FloatField(null=True, blank=True)),
                 ('a_value', models.FloatField(null=True, blank=True)),
                 ('b_value', models.FloatField(null=True, blank=True)),

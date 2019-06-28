@@ -12,7 +12,10 @@ CONTRACTOR_USERNAME = 'architect'
 CONTRACTOR_PASSWORD = 'architect'
 CONTRACTOR_PROXY = None
 
-PROJECT_PATH = '/home/peter/Projects/t3kton/architect/lib/demo_test/auto_demo_load/'
+GIT_URL = '/home/peter/Project/t3kton/project'
+GIT_BRANCH = 'master'
+
+PROJECT_WORK_PATH = '/var/lib/architect/project'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '@(a3yjcc(d3uxt)c7n(0vdfhe!$%u2(dvk^9^cg26+4wmih6l7'
@@ -26,8 +29,8 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
     'architect.User',
-    'architect.Contractor',
     'architect.TimeSeries',
+    'architect.Contractor',
     'architect.Plan',
     'architect.Project',
     'architect.Builder',

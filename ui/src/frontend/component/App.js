@@ -2,6 +2,7 @@ import React from 'react';
 import { Layout, NavDrawer, Panel, Sidebar, Chip, FontIcon, AppBar, Navigation, Button } from 'react-toolbox';
 import { BrowserRouter as Router, Route, Link } from 'react-router-dom';
 import Home from './Home';
+import Loader from './Loader';
 import Project from './Project';
 import Plan from './Plan';
 import Instance from './Instance';
@@ -75,11 +76,12 @@ class App extends React.Component
         <NavDrawer pinned={ this.state.leftDrawerVisable }>
           <Navigation type="vertical">
             <Link to="/"><Button icon="home">Home</Button></Link>
-            <Link to="/project"><Button icon="business">Project</Button></Link>
+            <Link to="/loader"><Button icon="import_export">Loader</Button></Link>
+            <Link to="/project"><Button icon="folder">Project</Button></Link>
             <Link to="/plans"><Button icon="business">Plan</Button></Link>
-            <Link to="/instances"><Button icon="business">Instances</Button></Link>
-            <Link to="/actions"><Button icon="business">Actions</Button></Link>
-            <Link to="/jobs"><Button icon="business">Jobs</Button></Link>
+            <Link to="/instances"><Button icon="list">Instances</Button></Link>
+            <Link to="/actions"><Button icon="format_list_bulleted">Actions</Button></Link>
+            <Link to="/jobs"><Button icon="code">Jobs</Button></Link>
           </Navigation>
         </NavDrawer>
         <Panel>
@@ -95,6 +97,7 @@ class App extends React.Component
             <Route path="/action/:id" render={ ( { match } ) => ( <Action id={ match.params.id } detailGet={ this.architect.getAction } /> ) } />
             <Route path="/job/:id" render={ ( { match } ) => ( <Job id={ match.params.id } detailGet={ this.architect.getJob } /> ) } />
 
+            <Route exact={true} path="/loader" render={ () => ( <Loader getLoader={ this.architect.getLoader } loaderCheck={ this.architect.loaderCheck } loaderUpdate={ this.architect.loaderUpdate } /> ) } />
             <Route exact={true} path="/project" render={ () => ( <Project listGet={ this.architect.getChangeList } rescan={ this.architect.projectLoaderRescan } apply={ this.architect.applyProjectChange } /> ) } />
             <Route exact={true} path="/plans" render={ () => ( <Plan listGet={ this.architect.getPlanList } /> ) } />
             <Route exact={true} path="/instances" render={ () => ( <Instance listGet={ this.architect.getInstanceList } /> ) } />

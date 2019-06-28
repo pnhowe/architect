@@ -25,6 +25,21 @@ class Architect
   logout = () => {};
   keepalive = () => {};
 
+  getLoader = () =>
+  {
+    return this.cinp.get( '/api/v1/Project/Loader:1:' );
+  };
+
+  loaderCheck = () =>
+  {
+    return this.cinp.call( '/api/v1/Project/Loader(check_upstream)')
+  };
+
+  loaderUpdate = () =>
+  {
+    return this.cinp.call( '/api/v1/Project/Loader(update)')
+  };
+
   projectLoaderRescan = () =>
   {
     return this.cinp.call( '/api/v1/Project/Loader(rescan)')

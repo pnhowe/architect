@@ -31,6 +31,34 @@ class Project extends React.Component
     ( error ) => alert( 'Error Applying Change Project: "' + error.reason + '": "' + error.detail + '"' ) );
   };
 
+  apply_all = () =>
+  {
+    var id_list = [];
+    for ( var item in this.state.change_list )
+    {
+      id_list.push( this.state.change_list[ item ].id );
+    }
+    id_list.sort();
+
+    var apply_one = ( id_list ) =>
+    {
+      if ( id_list.length < 1 )
+      {
+        this.update( this.props );
+        return;
+      }
+      var id = id_list.shift();
+      this.props.apply( id )
+      .then( ( result ) =>
+      {
+        apply_one( id_list );
+      },
+      ( error ) => alert( 'Error Applying Change "' + id + '" Project: "' + error.reason + '": "' + error.detail + '"' ) );
+    };
+
+    apply_one( id_list );
+  };
+
   componentDidMount()
   {
     this.update( this.props );
@@ -74,6 +102,7 @@ class Project extends React.Component
       <div>
         <Button onClick={ this.rescan }>Rescan</Button>
         <div><strong>{ this.state.load_results }</strong></div>
+        <Button onClick={ this.apply_all }>Apply All</Button>
         <Table selectable={ false } multiSelectable={ false }>
           <TableHead>
             <TableCell></TableCell>
