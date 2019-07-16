@@ -12,7 +12,7 @@ install: install-ui
 
 	install -m 644 api/architect.wsgi $(DESTDIR)/var/www/architect/api
 	install -m 644 apache.conf $(DESTDIR)/etc/apache2/sites-available/architect.conf
-	install -m 644 master.conf.sample $(DESTDIR)/etc/architect
+	install -m 644 architect.conf.sample $(DESTDIR)/etc
 	install -m 755 lib/cron/* $(DESTDIR)/usr/lib/architect/cron
 	install -m 755 lib/util/* $(DESTDIR)/usr/lib/architect/util
 
@@ -23,9 +23,9 @@ version:
 
 clean: clean-ui
 	./setup.py clean || true
-	$(RM) -fr build
-	$(RM) -f dpkg
-	$(RM) -fr htmlcov
+	$(RM) -r build
+	$(RM) dpkg
+	$(RM) -r htmlcov
 	dh_clean || true
 
 dist-clean: clean
@@ -56,13 +56,12 @@ test-distros:
 	echo ubuntu-xenial
 
 test-requires:
-	echo flake8 python3-pip python3-django python3-psycopg2 python3-parsimonious python3-pytest python3-pytest-cov python3-pytest-django python3-pytest-mock postgresql
+	echo flake8 python3-pip python3-django python3-psycopg2 python3-parsimonious python3-toml python3-pytest python3-pytest-cov python3-pytest-django python3-pytest-mock postgresql
 
 test-setup:
 	su postgres -c "echo \"CREATE ROLE architect WITH PASSWORD 'architect' NOSUPERUSER NOCREATEROLE CREATEDB LOGIN;\" | psql"
-	pip3 install -U jinja2
 	pip3 install -e .
-	cp master.conf.sample architect/settings.py
+	cp architect.conf.sample architect/settings.py
 
 lint:
 	flake8 --ignore=E501,E201,E202,E111,E126,E114,E402,W605 --statistics --exclude=migrations --exclude=ui .
