@@ -1,7 +1,6 @@
 import string
 
-# for now we are going to barrow parsimonious from contractor
-from architect.tcalc.parsimonious import Grammar, ParseError, IncompleteParseError
+from parsimonious import Grammar, ParseError, IncompleteParseError
 
 
 # TODO: make sure a distrubution function is used

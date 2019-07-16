@@ -10,9 +10,8 @@ import sys
 import logging
 
 from gunicorn.app.base import BaseApplication
-from cinp.server_werkzeug import WerkzeugServer
 
-from architect.User.models import getUser
+from architect.app import get_app
 
 DEBUG = True
 
@@ -40,19 +39,7 @@ if __name__ == '__main__':
   logger.info( 'Starting up...' )
 
   logger.debug( 'Creating Server...' )
-  app = WerkzeugServer( root_path='/api/v1/', root_version='1.0', debug=DEBUG, get_user=getUser, cors_allow_list=[ '*' ] )
-  logger.debug( 'Registering Models...' )
-
-  app.registerNamespace( '/', 'architect.User' )
-  app.registerNamespace( '/', 'architect.Contractor' )
-  app.registerNamespace( '/', 'architect.TimeSeries' )
-  app.registerNamespace( '/', 'architect.Builder' )
-  app.registerNamespace( '/', 'architect.Plan' )
-  app.registerNamespace( '/', 'architect.Project' )
-  app.registerNamespace( '/', 'architect.Inspector' )
-
-  logger.info( 'Validating...' )
-  app.validate()
+  app = get_app( DEBUG )
 
   logger.info( 'Starting Server...' )
   GunicornApp( app, { 'bind': '0.0.0.0:8880', 'loglevel': 'info' } ).run()

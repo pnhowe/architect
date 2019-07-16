@@ -26,7 +26,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = (
-    'architect.User',
+    'architect.Auth',
     'architect.TimeSeries',
     'architect.Contractor',
     'architect.Plan',

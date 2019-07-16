@@ -56,7 +56,7 @@ test-distros:
 	echo ubuntu-xenial
 
 test-requires:
-	echo flake8 python3-pip python3-django python3-psycopg2 python3-pytest python3-pytest-cov python3-pytest-django python3-pytest-mock
+	echo flake8 python3-pip python3-django python3-psycopg2 python3-parsimonious python3-pytest python3-pytest-cov python3-pytest-django python3-pytest-mock postgresql
 
 test-setup:
 	su postgres -c "echo \"CREATE ROLE architect WITH PASSWORD 'architect' NOSUPERUSER NOCREATEROLE CREATEDB LOGIN;\" | psql"
@@ -65,7 +65,7 @@ test-setup:
 	cp master.conf.sample architect/settings.py
 
 lint:
-	flake8 --ignore=E501,E201,E202,E111,E126,E114,E402,W605 --statistics --exclude=migrations .
+	flake8 --ignore=E501,E201,E202,E111,E126,E114,E402,W605 --statistics --exclude=migrations --exclude=ui .
 
 test:
 	py.test-3 -x --cov=architect --cov-report html --cov-report term --ds=architect.settings -vv architect

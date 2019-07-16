@@ -4,8 +4,8 @@ def updateInspection( inspection ):
   normalized_value = None
   target_count = inspection.target_count
   if member.scaler_type != 'none' and member.tsd_metric is not None:
-    #tsd = getTSD()
-    new_value = 130#tsd.getValue( member.tsd_metric, 10 )
+    # tsd = getTSD()
+    new_value = 130  # tsd.getValue( member.tsd_metric, 10 )
 
     value_list = inspection.state.get( 'value_list', [] )
     value_list.insert( 0, new_value )

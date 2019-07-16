@@ -19,7 +19,8 @@ class build( build_py ):
           continue
         self.build_module( module, module_file, package )
 
-setup( name='architect',
+setup(
+       name='architect',
        version='1.0',
        description='Architect',
        author='Peter Howe',
