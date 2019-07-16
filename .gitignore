@@ -1,9 +1,12 @@
 __pycache__
-vagrant/.vagrant
-vagrant/.Vagrantfile.swp
+*.pyc
+/build
+dpkg
 
-architect.egg-info
-
+*.egg-info
 htmlcov
-.cache
 .coverage
+.coveragerc
+.cache
+
+architect/settings.py

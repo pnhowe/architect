@@ -1,5 +1,3 @@
-
-
 TSD_TYPE = 'Graphite'
 GRAPHITE_HOST = '172.17.0.2'
 GRAPHITE_INJEST_PORT = 2004
@@ -12,13 +10,13 @@ CONTRACTOR_USERNAME = 'architect'
 CONTRACTOR_PASSWORD = 'architect'
 CONTRACTOR_PROXY = None
 
-GIT_URL = '/home/peter/Project/t3kton/project'
+GIT_URL = 'git@host/path'
 GIT_BRANCH = 'master'
 
 PROJECT_WORK_PATH = '/var/lib/architect/project'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '@(a3yjcc(d3uxt)c7n(0vdfhe!$%u2(dvk^9^cg26+4wmih6l7'
+SECRET_KEY = '@(a3yjcc(d3uxt)17n(0vd^dUr$%u2(dvk3DDcg26+4wmih6l7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
