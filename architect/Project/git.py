@@ -35,7 +35,7 @@ class Git():
     return result
 
   def checkout( self ):
-    self._execute( [ 'clone', self.url, self.local_dir ] )
+    self._execute( [ 'clone', self.url, self.dir ] )
 
   def update( self ):
     self._execute( [ 'pull', 'origin', '{0}:master'.format( self.branch ) ] )

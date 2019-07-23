@@ -73,7 +73,7 @@ class Loader( models.Model ):
   @staticmethod
   def update():
     git = getGit()
-    if not os.path.exists( settings.PROJECT_WORK_PATH ):
+    if not os.path.exists( os.path.join( settings.PROJECT_WORK_PATH, 'architect.toml' ) ):
       git.checkout()
 
     git.update()

@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+import os
+os.environ.setdefault( 'DJANGO_SETTINGS_MODULE', 'architect.settings' )
+
+import django
+django.setup()
+
+import logging
+import argparse
+from architect.Project.models import Loader, Change
+
+
+def main():
+  parser = argparse.ArgumentParser( description='utiltiy client for architect' )
+  parser.add_argument( '-v', '--verbose', help='debug logging', action='store_true' )
+  parser.add_argument( '-c', '--check', help='check upstream git', action='store_true' )
+  parser.add_argument( '-u', '--update', help='update from upstream git', action='store_true' )
+  parser.add_argument( '-r', '--rescan', help='rescan project', action='store_true' )
+  parser.add_argument( '-a', '--apply', help='apply all changes', action='store_true' )
+  parser.add_argument( '-i', '--iterate', help='if --rescan, --apply, and --iterate are'
+                       ' set, client will keep repeating rescan/apply till rescan does not'
+                       ' result in any more changes', action='store_true' )
+
+  args = parser.parse_args()
+
+  logging.basicConfig()
+  logger = logging.getLogger()
+  if args.verbose:
+    logger.setLevel( logging.DEBUG )
+  else:
+    logger.setLevel( logging.INFO )
+
+  if args.check:
+    Loader.check_upstream()
+    print( 'Upstream Hash is "{0}"'.format( Loader.objects.get().upstream_hash ) )
+
+  if args.update:
+    Loader.update()
+    print( 'Local Hash is now "{0}"'.format( Loader.objects.get().current_hash ) )
+
+  count = 1
+  while count:
+    if args.rescan:
+      Loader.rescan()
+      count = Change.objects.all().count()
+      print( 'There are "{0}" changes'.format( count ) )
+
+    if args.apply:
+      for change in Change.objects.all().order_by( 'id' ):
+        print( 'Change "{0}": "{1}"'.format( change.id, change.apply() ) )
+
+    if not ( args.rescan & args.apply & args.iterate ):
+      count = 0
+
+
+if __name__ == '__main__':
+  main()

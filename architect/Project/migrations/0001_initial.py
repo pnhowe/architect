@@ -3,13 +3,14 @@ from __future__ import unicode_literals
 
 from datetime import datetime
 from django.db import migrations, models
+from django.utils.timezone import utc
 import architect.fields
 import django.db.models.deletion
 
 
 def create_loader( app, schema_editor ):
     Loader = app.get_model( 'Project', 'Loader' )
-    l = Loader( id=1, current_hash='X', upstream_hash='X', last_update=datetime.min, last_check=datetime.min )
+    l = Loader( id=1, current_hash='X', upstream_hash='X', last_update=datetime.min.replace( tzinfo=utc ), last_check=datetime.min.replace( tzinfo=utc ) )
     l.full_clean()
     l.save()
 
