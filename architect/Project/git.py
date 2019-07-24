@@ -38,10 +38,10 @@ class Git():
     self._execute( [ 'clone', self.url, self.dir ] )
 
   def update( self ):
-    self._execute( [ 'pull', 'origin', '{0}:master'.format( self.branch ) ] )
+    self._execute( [ 'pull', 'origin', '--force', '{0}:master'.format( self.branch ) ] )
 
   def local_hash( self ):
     return self._execute( [ 'rev-parse', 'HEAD' ] )[ 0 ]
 
   def remote_hash( self ):
-    return self._execute( [ 'ls-remote', 'origin', 'HEAD' ] )[ 0 ].split( "\t" )[ 0 ]
+    return self._execute( [ 'ls-remote', self.url, self.branch ] )[ 0 ].split( "\t" )[ 0 ]

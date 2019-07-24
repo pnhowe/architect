@@ -1,4 +1,3 @@
-from pprint import pprint
 import hashlib
 from datetime import datetime, timezone
 from django.apps import apps
@@ -55,7 +54,6 @@ def _compare( current, project, name_list ):
 
 class ProjectComparer():
   def __init__( self, project, contractor ):
-    pprint( project )
     self.site_map = project[ 'sites' ]
     self.plan_map = project[ 'plans' ]
     self.contractor = contractor

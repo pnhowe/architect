@@ -41,8 +41,9 @@ def main():
   count = 1
   while count:
     if args.rescan:
-      Loader.rescan()
+      msg = Loader.rescan()
       count = Change.objects.all().count()
+      print( msg )
       print( 'There are "{0}" changes'.format( count ) )
 
     if args.apply:

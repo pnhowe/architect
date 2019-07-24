@@ -79,7 +79,7 @@ def loadProject( project_path ):
     except KeyError:
       pass
 
-  for name in config[ 'plan' ]:
+  for name in config.get( 'plan', [] ):
     plan = config[ 'plan' ][ name ]
     plan_map[ name ] = plan
 
@@ -97,7 +97,7 @@ SITE_PATTERN = {
 ADDRESSBLOCK_PATTERN = {
                         'subnet': str,
                         'prefix': int,
-                        'gateway_offset': int,
+                        'gateway_offset': ( int, None ),
                         'reserved_offset_list': [ int ],
                         'dynamic_offset_list': [ int ]
                        }
@@ -112,7 +112,7 @@ STRUCTURE_PATTERN = {
 STRUCTURE_PATTERN_MAP = {
                           'Manual': { 'blueprint': str },
                           'AMT': { 'blueprint': str, 'amt_interface': { 'mac': str, 'offset': int } },
-                          'Vcenter': { 'blueprint': str, 'complex': str },
+                          'VCenter': { 'blueprint': str, 'complex': str },
                           'Docker': { 'blueprint': str, 'complex': str }
                          }
 
