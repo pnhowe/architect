@@ -294,7 +294,11 @@ class Contractor():
       self.cinp.create( '/api/v1/Manual/ManualComplex', data )
 
     elif value_map[ 'type' ] == 'VCenter':
-      data[ 'vcenter_host' ] = value_map[ 'vcenter_host' ]
+      data[ 'vcenter_host' ] = '/api/v1/Building/Structure:2:'
+      data[ 'vcenter_datacenter' ] = 'MLX'
+      data[ 'vcenter_cluster' ] = 'Cluster_01'
+      data[ 'vcenter_username' ] = 'mlxadmin2@vsint.local'
+      data[ 'vcenter_password' ] = 'vVMwar123!!'
       self.cinp.create( '/api/v1/VCenter/VCenterComplex', data )
     else:
       raise ValueError( 'Unknown foundation type "{0}"'.format( value_map[ 'type' ] ) )
