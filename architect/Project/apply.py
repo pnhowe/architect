@@ -47,6 +47,12 @@ def applyChange( change ):
 
       result = 'Address Block "{0}" updated fields: "{1}"'.format( change.target_id, '", "'.join( change.target_val.keys() ) )
 
+    elif change.action == 'remote_delete':
+      contractor = getContractor()
+      contractor.deleteAddressBlock( change.target_id )
+
+      result = 'Address Block "{0}" deleted remotely'.format( change.target_id )
+
     else:
       raise ValueError( 'Unknown Action "{0}" for address_block'.format( change.action ) )
 

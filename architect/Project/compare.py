@@ -132,10 +132,10 @@ class ProjectComparer():
     if self._addressBlock( project_site, local_site ):
       return True
 
-    if self._structure( project_site, local_site ):
+    if self._complex( project_site, local_site ):
       return True
 
-    if self._complex( project_site, local_site ):
+    if self._structure( project_site, local_site ):
       return True
 
     return False

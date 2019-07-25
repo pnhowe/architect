@@ -194,6 +194,11 @@ class Contractor():
       data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:manual-foundation-base:'
       foundation = self.cinp.create( '/api/v1/Manual/ManualFoundation', data )[0]
 
+    elif value_map[ 'type' ] == 'VCenter':
+      data[ 'blueprint' ] = '/api/v1/BluePrint/FoundationBluePrint:vcenter-vm-base:'
+      data[ 'vcenter_complex' ] = '/api/v1/VCenter/VCenterComplex:{0}:'.format( value_map[ 'complex' ] )
+      foundation = self.cinp.create( '/api/v1/VCenter/VCenterFoundation', data )[0]
+
     else:
       raise ValueError( 'Unknown foundation type "{0}"'.format( value_map[ 'type' ] ) )
 
@@ -288,6 +293,9 @@ class Contractor():
     if value_map[ 'type' ] == 'Manual':
       self.cinp.create( '/api/v1/Manual/ManualComplex', data )
 
+    elif value_map[ 'type' ] == 'VCenter':
+      data[ 'vcenter_host' ] = value_map[ 'vcenter_host' ]
+      self.cinp.create( '/api/v1/VCenter/VCenterComplex', data )
     else:
       raise ValueError( 'Unknown foundation type "{0}"'.format( value_map[ 'type' ] ) )
 
