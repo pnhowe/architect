@@ -63,7 +63,7 @@ class ProjectComparer():
   @property
   def change( self ):
     import pprint
-    pprint.print( self.change_list )
+    pprint.pprint( self.change_list )
     return self.change_list
 
   def compare( self ):

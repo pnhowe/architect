@@ -213,6 +213,13 @@ class Contractor():
     structure = self.cinp.create( '/api/v1/Building/Structure', data )[0]
     structure_id = self.cinp.uri.extractIds( structure )[0]
 
+    data = {}
+    data[ 'foundation' ] = '/api/v1/Building/Foundation:{0}:'.format( foundation_id )
+    data[ 'name' ] = 'eth0'
+    data[ 'physical_location' ] = 'eth0'
+    data[ 'is_provisioning' ] = True
+    self.cinp.create( '/api/v1/Utilities/RealNetworkInterface', data )
+
     address_id_list = []
     is_primary = True
     for address in address_list:
@@ -246,12 +253,12 @@ class Contractor():
     if structure_data:
       foundation = self.cinp.get( '/api/v1/Building/Foundation:{0}:'.format( id ) )
 
-      self.cinp.update( foundation[ 'attached_structure' ], structure_data )
+      self.cinp.update( foundation[ 'structure' ], structure_data )
 
   def deleteStructure( self, id ):
     foundation_uri = '/api/v1/Building/Foundation:{0}:'.format( id )
     foundation = self.cinp.get( foundation_uri )
-    structure_uri = foundation[ 'attached_structure' ]
+    structure_uri = foundation[ 'structure' ]
     structure = self.cinp.get( structure_uri )
 
     if structure[ 'state' ] == 'planned':  # for now we will have to go over this twice, first to destroy and second to delete
@@ -325,7 +332,7 @@ class Contractor():
       for member in member_list - current:
         # This is a bit of a hack to find the structure by looking up the foundation by the name, which *SHOULD* match the locator, there should be a better way
         foundation = self.cinp.get( '/api/v1/Building/Foundation:{0}:'.format( member ) )
-        structure = foundation[ 'attached_structure' ]
+        structure = foundation[ 'structure' ]
         data = { 'complex': uri, 'structure': structure }
         self.cinp.create( '/api/v1/Building/ComplexStructure', data )
 
