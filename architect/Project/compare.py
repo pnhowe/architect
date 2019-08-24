@@ -58,17 +58,62 @@ class ProjectComparer():
     self.plan_map = project[ 'plans' ]
     self.contractor = contractor
     self.change_list = []
+    self.change_tree = {}
+    self.entity_map = {}
     self.message = None
 
   @property
   def change( self ):
-    import pprint
-    pprint.pprint( self.change_list )
     return self.change_list
 
-  def compare( self ):
-    Site = apps.get_model( 'Project', 'Site' )
+  def compare( self, site=None ):
     self.change_list = []
+
+    if site is None:
+      if self._localSites():
+        return True
+
+      return self._cleanupRemoteSites()
+
+    self.change_tree = {}
+    self.entity_map = {}
+    Site = apps.get_model( 'Project', 'Site' )
+
+    try:
+      local_site = Site.objects.get( name=site )
+    except Site.DoesNotExist:
+      raise ValueError( 'Site "{0}" not found'.format( site ) )
+
+    project_site = self.site_map[ site ]
+
+    hasher = hashlib.sha1()
+    hasher.update( str( project_site ).encode() )
+    current_hash = hasher.hexdigest()
+    if local_site.last_load_hash == current_hash:
+      continue
+
+    if self._site( project_site, local_site, self.contractor.getSite( site_name ) ):
+      continue
+
+    local_site.last_load = datetime.now( timezone.utc )
+    local_site.last_load_hash = current_hash
+    local_site.full_clean()
+    local_site.save()
+
+
+
+
+
+
+    if self._plan( self.plan_map ):
+      self.message = 'Plan Changes'
+      return True
+
+    else:
+      return False
+
+  def _localSites( self ):
+    Site = apps.get_model( 'Project', 'Site' )
 
     local_site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
     project_site_list = set( self.site_map.keys() )
@@ -83,6 +128,12 @@ class ProjectComparer():
       self.message = 'Local Site Add/Remove'
       return True
 
+    return False
+
+  def _cleanupRemoteSites( self ):
+    Site = apps.get_model( 'Project', 'Site' )
+
+    local_site_list = set( Site.objects.all().values_list( 'name', flat=True ) )
     remote_site_list = set( self.contractor.getSiteList() )
     for site_name in remote_site_list - local_site_list:
       self.change_list.append( { 'type': 'site', 'action': 'remote_delete', 'target_id': site_name } )
@@ -95,49 +146,37 @@ class ProjectComparer():
       self.message = 'Remote Site Add/Remove'
       return True
 
+    return False
+
+
+  def _sites( self, ):
+
     for site_name in project_site_list:
-      local_site = Site.objects.get( name=site_name )
-      project_site = self.site_map[ site_name ]
 
-      hasher = hashlib.sha1()
-      hasher.update( str( project_site ).encode() )
-      current_hash = hasher.hexdigest()
-      if local_site.last_load_hash == current_hash:
-        continue
-
-      if self._site( project_site, local_site, self.contractor.getSite( site_name ) ):
-        continue
-
-      local_site.last_load = datetime.now( timezone.utc )
-      local_site.last_load_hash = current_hash
-      local_site.full_clean()
-      local_site.save()
 
     if self.change_list:
-      self.message = 'Resource Changes'
       return True
 
-    if self._plan( self.plan_map ):
-      self.message = 'Plan Changes'
-      return True
-
-    else:
-      return False
+    return False
 
   def _site( self, project_site, local_site, remote_site ):
     # update site details
     change_list = _compare( remote_site, project_site, ( 'description', 'parent', 'config_values' ) )
     if change_list:
       self.change_list.append( { 'type': 'site', 'action': 'change', 'target_id': local_site.name, 'current_val': dict( [ ( i, remote_site[ i ] ) for i in change_list ] ), 'target_val': dict( [ ( i, project_site[ i ] ) for i in change_list ] ) } )
+      self.message = 'Site Changes'
       return True
 
     if self._addressBlock( project_site, local_site ):
+      self.message = 'Address Block Changes'
       return True
 
     if self._complex( project_site, local_site ):
+      self.message = 'Complex Changes'
       return True
 
     if self._structure( project_site, local_site ):
+      self.message = 'Structure Changes'
       return True
 
     return False

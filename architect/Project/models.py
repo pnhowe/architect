@@ -102,6 +102,8 @@ class Loader( models.Model ):
       return 'Unable to find project file'
 
     project = loadProject( settings.PROJECT_WORK_PATH )
+    import pprint
+    pprint.pprint( project )
 
     try:
       validateProject( project )

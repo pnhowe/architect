@@ -9,6 +9,71 @@ name_regex = re.compile( '^[a-zA-Z0-9][a-zA-Z0-9_\-]*$' )
 item_list = ( 'address_block', 'structure', 'complex', 'plan' )
 
 
+SITE_PATTERN = {
+                 'description': str,
+                 'parent': ( str, None ),
+                 'config_values': ( dict, {} )
+               }
+
+ADDRESSBLOCK_PATTERN = {
+                        'subnet': str,
+                        'prefix': int,
+                        'gateway_offset': ( int, None ),
+                        'reserved_offset_list': [ int ],
+                        'dynamic_offset_list': [ int ]
+                       }
+
+
+STRUCTURE_PATTERN = {
+                      'address_list': [ { 'address_block': str, 'offset': int } ],
+                      'type': str,
+                      'config_values': ( dict, None )
+                   }
+
+STRUCTURE_PATTERN_MAP = {
+                          'Manual': { 'blueprint': str },
+                          'AMT': { 'blueprint': str, 'amt_interface': { 'mac': str, 'offset': int } },
+                          'VCenter': { 'blueprint': str, 'complex': str },
+                          'Docker': { 'blueprint': str, 'complex': str }
+                         }
+
+COMPLEX_PATTERN = {
+                    'type': str,
+                    'description': str,
+                    'built_percentage': ( int, None ),
+                    'member_list': [ str ]
+                  }
+
+COMPLEX_PATTERN_TYPED = {
+                          'Manual': {},
+                          'VCenter': {
+                                         'host': str,
+                                         'username': str,
+                                         'password': str,
+                                         'datacenter': ( 'str', 'ha-datacenter' ),
+                                         'cluster': ( 'str', 'localhost.' )
+                                     }
+                        }
+
+PLAN_PATTERN = {
+                 'description': str,
+                 'script': str,
+                 'address_block': str,
+                 'complex_list': ( list, [] ),
+                 'blueprint_map': ( dict, {} ),
+                 'timeseries_map': dict,
+                 'enabled': ( bool, None ),
+                 'change_cooldown': ( int, None ),
+                 'config_values': ( dict, {} ),
+                 'max_inflight': ( int, None ),
+                 'hostname_pattern': ( str, None ),
+                 'slots_per_complex': ( int, None ),
+                 'can_move': ( bool, None ),
+                 'can_destroy': ( bool, None ),
+                 'can_build': ( bool, None )
+               }
+
+
 def _sub_load( filepath, paramater_map ):
   template = string.Template( open( filepath, 'r' ).read() )
   config = toml.loads( template.substitute( paramater_map ) )
@@ -88,59 +153,6 @@ def loadProject( project_path ):
 
   return { 'sites': site_map, 'plans': plan_map }
 
-SITE_PATTERN = {
-                 'description': str,
-                 'parent': ( str, None ),
-                 'config_values': ( dict, {} )
-               }
-
-ADDRESSBLOCK_PATTERN = {
-                        'subnet': str,
-                        'prefix': int,
-                        'gateway_offset': ( int, None ),
-                        'reserved_offset_list': [ int ],
-                        'dynamic_offset_list': [ int ]
-                       }
-
-
-STRUCTURE_PATTERN = {
-                      'address_list': [ { 'address_block': str, 'offset': int } ],
-                      'type': str,
-                      'config_values': ( dict, None )
-                   }
-
-STRUCTURE_PATTERN_MAP = {
-                          'Manual': { 'blueprint': str },
-                          'AMT': { 'blueprint': str, 'amt_interface': { 'mac': str, 'offset': int } },
-                          'VCenter': { 'blueprint': str, 'complex': str },
-                          'Docker': { 'blueprint': str, 'complex': str }
-                         }
-
-COMPLEX_PATTERN = {
-                    'type': str,
-                    'description': str,
-                    'built_percentage': ( int, None ),
-                    'member_list': [ str ]
-                  }
-
-PLAN_PATTERN = {
-                 'description': str,
-                 'script': str,
-                 'address_block': str,
-                 'complex_list': ( list, [] ),
-                 'blueprint_map': ( dict, {} ),
-                 'timeseries_map': dict,
-                 'enabled': ( bool, None ),
-                 'change_cooldown': ( int, None ),
-                 'config_values': ( dict, {} ),
-                 'max_inflight': ( int, None ),
-                 'hostname_pattern': ( str, None ),
-                 'slots_per_complex': ( int, None ),
-                 'can_move': ( bool, None ),
-                 'can_destroy': ( bool, None ),
-                 'can_build': ( bool, None )
-               }
-
 
 def _validate_item( location, item, pattern ):
   itype = type( item )
@@ -201,6 +213,11 @@ def validateProject( project ):
 
     for complex in value_map[ 'complex' ]:
       _validate_item( 'complex.{0}.{1}'.format( site, complex ), value_map[ 'complex' ][ complex ], COMPLEX_PATTERN )
+      item_type = value_map[ 'complex' ][ complex ][ 'type' ]
+      if item_type not in COMPLEX_PATTERN_TYPED.keys():
+        raise ValueError( 'Complex Type "{0}" not valid'.format( item_type ) )
+
+      _validate_item( 'complex.{0}.{1}'.format( site, complex ), value_map[ 'complex' ][ complex ], COMPLEX_PATTERN_TYPED[ item_type ] )
 
   for plan, value_map in project[ 'plans' ].items():
     _validate_item( 'plan.{0}'.format( plan ), value_map, PLAN_PATTERN )
